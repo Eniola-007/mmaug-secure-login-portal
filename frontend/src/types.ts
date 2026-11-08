@@ -1,0 +1,28 @@
+export type Role = "student" | "teacher" | "admin";
+
+export interface PortalUser {
+  id: string;
+  email: string;
+  display_name: string;
+  role: Role;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface DashboardData {
+  role: Role;
+  title: string;
+  actions: string[];
+}
+
+export interface AuditEvent {
+  id: string;
+  occurred_at: string;
+  actor_id: string | null;
+  action: string;
+  target_type: string | null;
+  target_id: string | null;
+  outcome: string;
+  correlation_id: string | null;
+  details_json: string;
+}

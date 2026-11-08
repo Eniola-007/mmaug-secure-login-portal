@@ -1,0 +1,27 @@
+output "api_app_name" {
+  value = azurerm_linux_web_app.api.name
+}
+
+output "api_url" {
+  value = "https://${azurerm_linux_web_app.api.default_hostname}"
+}
+
+output "frontend_app_name" {
+  value = azurerm_linux_web_app.frontend.name
+}
+
+output "frontend_url" {
+  value = "https://${azurerm_linux_web_app.frontend.default_hostname}"
+}
+
+output "key_vault_name" {
+  value = azurerm_key_vault.portal.name
+}
+
+output "postgres_server_name" {
+  value = azurerm_postgresql_flexible_server.portal.name
+}
+
+output "runtime_identity_client_id" {
+  value = data.azurerm_user_assigned_identity.runtime.client_id
+}

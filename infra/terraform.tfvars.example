@@ -1,0 +1,10 @@
+subscription_id        = "9a2ab22e-5269-4da3-a16a-eeed2b0c09aa"
+tenant_id              = "71beefd7-29f4-4b9e-9cb2-e78b5dc851ad"
+resource_group_name    = "rg_mmaug_high_school"
+location               = "northeurope"
+environment            = "development"
+runtime_identity_name  = "id-mmaug-secure-login-portal"
+entra_api_client_id    = "replace-after-app-registration"
+entra_spa_client_id    = "replace-after-app-registration"
+
+# Supply TF_VAR_postgres_admin_password from a protected environment secret.

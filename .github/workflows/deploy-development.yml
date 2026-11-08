@@ -1,0 +1,68 @@
+name: Deploy development
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: development
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment: development
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: hashicorp/setup-terraform@v3
+      - name: Terraform init
+        working-directory: infra
+        run: terraform init
+      - name: Terraform validate
+        working-directory: infra
+        run: terraform validate
+      - name: Terraform apply
+        working-directory: infra
+        env:
+          TF_VAR_subscription_id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          TF_VAR_tenant_id: ${{ vars.AZURE_TENANT_ID }}
+          TF_VAR_entra_api_client_id: ${{ vars.ENTRA_API_CLIENT_ID }}
+          TF_VAR_entra_spa_client_id: ${{ vars.ENTRA_SPA_CLIENT_ID }}
+          TF_VAR_postgres_admin_password: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
+        run: terraform apply -auto-approve
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build deployment packages
+        env:
+          VITE_API_BASE_URL: ${{ vars.API_BASE_URL }}
+          VITE_ENTRA_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          VITE_ENTRA_SPA_CLIENT_ID: ${{ vars.ENTRA_SPA_CLIENT_ID }}
+          VITE_ENTRA_API_CLIENT_ID: ${{ vars.ENTRA_API_CLIENT_ID }}
+          VITE_DEV_AUTH: "false"
+        run: |
+          (cd backend && zip -r ../backend.zip app migrations alembic.ini requirements.txt)
+          (cd frontend && npm ci && npm run build && cd dist && zip -r ../../frontend.zip .)
+
+      - name: Deploy API
+        run: az webapp deploy --resource-group rg_mmaug_high_school --name "$(terraform -chdir=infra output -raw api_app_name)" --src-path backend.zip --type zip --clean true
+      - name: Deploy frontend
+        run: az webapp deploy --resource-group rg_mmaug_high_school --name "$(terraform -chdir=infra output -raw frontend_app_name)" --src-path frontend.zip --type zip --clean true
+      - name: Verify health
+        run: curl --fail --retry 6 --retry-delay 10 "$(terraform -chdir=infra output -raw api_url)/health/ready"
