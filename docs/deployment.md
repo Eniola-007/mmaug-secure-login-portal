@@ -28,10 +28,13 @@ After the GitHub owner and repository are known:
 
 ```powershell
 .\scripts\bootstrap-github-oidc.ps1 `
-  -GitHubOwner '<OWNER>' `
-  -GitHubRepository '<REPOSITORY>' `
+  -GitHubOwner 'Eniola-007' `
+  -GitHubRepository 'mmaug-secure-login-portal' `
   -Environment development
 ```
+
+Verified federated subject:
+`repo:Eniola-007/mmaug-secure-login-portal:environment:development`.
 
 An Owner, User Access Administrator, or Role Based Access Control Administrator must
 grant the deployment identity the minimum approved role at the resource-group scope.
