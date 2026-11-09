@@ -92,17 +92,18 @@ jobs:
           VITE_ENTRA_API_CLIENT_ID: ${{ vars.ENTRA_API_CLIENT_ID || '00000000-0000-0000-0000-000000000000' }}
           VITE_DEV_AUTH: "false"
         run: |
-          (cd backend && zip -r ../backend.zip app migrations alembic.ini requirements.txt)
+          python -m pip install --requirement backend/requirements.txt --target backend/.python_packages/lib/site-packages
+          (cd backend && zip -r ../backend.zip app migrations alembic.ini requirements.txt .python_packages)
           (cd frontend && npm ci && npm run build && cd dist && zip -r ../../frontend.zip .)
 
       - name: Deploy API
-        run: az webapp deploy --resource-group rg_mmaug_high_school --name "$(terraform -chdir=infra output -raw api_app_name)" --src-path backend.zip --type zip --clean true
+        run: az webapp deploy --resource-group rg_mmaug_high_school --name "$(terraform -chdir=infra output -raw api_app_name)" --src-path backend.zip --type zip --clean true --async true
       - name: Deploy frontend
-        run: az webapp deploy --resource-group rg_mmaug_high_school --name "$(terraform -chdir=infra output -raw frontend_app_name)" --src-path frontend.zip --type zip --clean true
+        run: az webapp deploy --resource-group rg_mmaug_high_school --name "$(terraform -chdir=infra output -raw frontend_app_name)" --src-path frontend.zip --type zip --clean true --async true
       - name: Verify health
         run: |
-          curl --fail --retry 12 --retry-delay 10 "$API_APP_URL/health/ready"
-          curl --fail --retry 12 --retry-delay 10 "$FRONTEND_APP_URL/"
+          curl --fail --retry 60 --retry-delay 10 --retry-all-errors --max-time 20 "$API_APP_URL/health/ready"
+          curl --fail --retry 30 --retry-delay 10 --retry-all-errors --max-time 20 "$FRONTEND_APP_URL/"
           {
             echo "### Development deployment"
             echo "- Frontend URL: $FRONTEND_APP_URL"

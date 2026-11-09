@@ -218,7 +218,7 @@ resource "azurerm_linux_web_app" "api" {
 
   site_config {
     always_on                         = var.app_service_sku != "F1"
-    app_command_line                  = "alembic upgrade head && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    app_command_line                  = "python -m alembic upgrade head && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
     ftps_state                        = "Disabled"
     minimum_tls_version               = "1.2"
     vnet_route_all_enabled            = true
@@ -240,7 +240,8 @@ resource "azurerm_linux_web_app" "api" {
     CORS_ORIGINS                               = var.application_gateway_enabled ? "https://${local.application_gateway_hostname}" : "https://${azurerm_linux_web_app.frontend.default_hostname}"
     APPLICATIONINSIGHTS_CONNECTION_STRING      = azurerm_application_insights.portal.connection_string
     ApplicationInsightsAgent_EXTENSION_VERSION = "~3"
-    SCM_DO_BUILD_DURING_DEPLOYMENT             = "true"
+    SCM_DO_BUILD_DURING_DEPLOYMENT             = "false"
+    ENABLE_ORYX_BUILD                          = "false"
     WEBSITES_PORT                              = "8000"
   }
 
