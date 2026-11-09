@@ -20,6 +20,7 @@ Authentication and authorization remain separate:
 ```mermaid
 flowchart LR
     U[Microsoft work, school, guest,<br/>or personal account]
+    DNS[mmaug-secure-portal<br/>.northeurope.cloudapp.azure.com]
     WAF[Azure Application Gateway<br/>WAF_v2 + HTTPS]
     SPA[React SPA<br/>authorization code + PKCE]
     IDP[Microsoft identity platform<br/>common authority]
@@ -28,7 +29,8 @@ flowchart LR
     KV[Azure Key Vault]
     MON[Application Insights]
 
-    U --> WAF
+    U --> DNS
+    DNS --> WAF
     WAF -->|default route| SPA
     WAF -->|/api/*| API
     SPA --> IDP
@@ -73,11 +75,22 @@ Per the approved design, the same UAMI performs GitHub deployment, temporary dir
 bootstrap, Key Vault access, and workload identity. This is operationally simple but has
 a larger blast radius than separate deployment and runtime identities.
 
+The obsolete `id-mmaug-github-deploy` identity was permanently deleted on 9 November
+2026 after confirming that it had no Azure role assignments. Only
+`id-mmaug-secure-login-portal` remains in the resource group.
+
 After the final HTTPS redirect URI and consent are configured, remove broad Microsoft
 Graph bootstrap permissions from the identity unless repeatable directory
 provisioning is an approved operational requirement.
 
-Application Gateway is the public HTTPS endpoint. It redirects HTTP to HTTPS, applies
+Application Gateway is the public HTTPS endpoint. The Azure-provided DNS label
+`mmaug-secure-portal.northeurope.cloudapp.azure.com` was available when checked on
+9 November 2026 but is not reserved until its Public IP is deployed. The gateway
+redirects HTTP to HTTPS, applies
 the OWASP 3.2 managed rules in Prevention mode, sends `/api/*` to FastAPI, and sends all
-other paths to the React frontend. The gateway cannot be enabled until a real DNS host
-name and a Key Vault-backed TLS certificate are supplied.
+other paths to the React frontend.
+
+No application client secret or GitHub deployment secret is used. HTTPS nevertheless
+requires a CA-issued certificate with a private key. Application Gateway does not issue
+that certificate; the approved design stores it in Key Vault and lets the managed
+identity retrieve it. This certificate object is distinct from an Entra client secret.

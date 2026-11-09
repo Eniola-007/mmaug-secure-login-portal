@@ -116,23 +116,30 @@ resource "azurerm_key_vault" "portal" {
   resource_group_name        = data.azurerm_resource_group.project.name
   tenant_id                  = var.tenant_id
   sku_name                   = "standard"
-  rbac_authorization_enabled = true
+  rbac_authorization_enabled = false
   purge_protection_enabled   = var.environment == "production"
   soft_delete_retention_days = 7
   tags                       = local.common_tags
-}
 
-resource "azurerm_role_assignment" "runtime_key_vault_secrets" {
-  scope                = azurerm_key_vault.portal.id
-  role_definition_name = "Key Vault Secrets User"
-  principal_id         = data.azurerm_user_assigned_identity.runtime.principal_id
-  principal_type       = "ServicePrincipal"
-}
+  access_policy {
+    tenant_id = var.tenant_id
+    object_id = data.azurerm_user_assigned_identity.runtime.principal_id
 
-resource "azurerm_role_assignment" "deployer_key_vault_secrets" {
-  scope                = azurerm_key_vault.portal.id
-  role_definition_name = "Key Vault Secrets Officer"
-  principal_id         = data.azurerm_client_config.current.object_id
+    secret_permissions      = ["Get", "List", "Set", "Delete", "Recover"]
+    certificate_permissions = ["Get", "List", "Create", "Import", "Update", "Delete", "Recover"]
+  }
+
+  dynamic "access_policy" {
+    for_each = data.azurerm_client_config.current.object_id == data.azurerm_user_assigned_identity.runtime.principal_id ? [] : [data.azurerm_client_config.current.object_id]
+
+    content {
+      tenant_id = var.tenant_id
+      object_id = access_policy.value
+
+      secret_permissions      = ["Get", "List", "Set", "Delete", "Recover"]
+      certificate_permissions = ["Get", "List", "Create", "Import", "Update", "Delete", "Recover"]
+    }
+  }
 }
 
 resource "azurerm_postgresql_flexible_server" "portal" {
@@ -174,10 +181,6 @@ resource "azurerm_key_vault_secret" "database_url" {
   value_wo_version = 1
   key_vault_id     = azurerm_key_vault.portal.id
 
-  depends_on = [
-    azurerm_role_assignment.deployer_key_vault_secrets,
-    azurerm_role_assignment.runtime_key_vault_secrets,
-  ]
 }
 
 resource "azurerm_service_plan" "portal" {
@@ -226,7 +229,7 @@ resource "azurerm_linux_web_app" "api" {
     ENTRA_API_CLIENT_ID                        = var.entra_api_client_id
     ENTRA_REQUIRED_SCOPE                       = "access_as_user"
     ALLOW_DEV_AUTH                             = "false"
-    CORS_ORIGINS                               = var.application_gateway_enabled ? "https://${var.application_gateway_host_name}" : "https://${azurerm_linux_web_app.frontend.default_hostname}"
+    CORS_ORIGINS                               = var.application_gateway_enabled ? "https://${local.application_gateway_hostname}" : "https://${azurerm_linux_web_app.frontend.default_hostname}"
     APPLICATIONINSIGHTS_CONNECTION_STRING      = azurerm_application_insights.portal.connection_string
     ApplicationInsightsAgent_EXTENSION_VERSION = "~3"
     SCM_DO_BUILD_DURING_DEPLOYMENT             = "true"

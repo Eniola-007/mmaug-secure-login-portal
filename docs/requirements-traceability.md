@@ -13,7 +13,9 @@
 | No plaintext passwords | Entra authentication; PostgreSQL bootstrap secret in Key Vault | Config review |
 | Five students, two teachers, one admin | Synthetic seed dataset | Seed count/demo |
 | CI/CD | GitHub Actions build, test, scan, Terraform, deploy, health check | Workflow run |
-| Secretless Azure deployment | GitHub OIDC to dedicated UAMI | OIDC login evidence |
+| Secretless Azure deployment | GitHub OIDC to the single approved UAMI; no client secret | OIDC login evidence |
+| Web application firewall | Application Gateway WAF_v2, OWASP 3.2 Prevention | WAF policy and blocked-request test |
+| Public HTTPS endpoint | Azure regional DNS label and Key Vault-backed TLS certificate | DNS, TLS, and redirect test |
 | Separate environments | GitHub environments and Terraform environment variable | Dev/UAT/prod plans |
 | Monitoring | Workspace-based Application Insights | Azure telemetry query |
 | Private database | VNet delegated PostgreSQL with public access disabled | Terraform plan |

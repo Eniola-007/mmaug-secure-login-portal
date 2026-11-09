@@ -31,5 +31,9 @@ output "application_gateway_public_ip" {
 }
 
 output "portal_url" {
-  value = var.application_gateway_enabled ? "https://${var.application_gateway_host_name}" : "https://${azurerm_linux_web_app.frontend.default_hostname}"
+  value = var.application_gateway_enabled ? "https://${local.application_gateway_hostname}" : "https://${azurerm_linux_web_app.frontend.default_hostname}"
+}
+
+output "application_gateway_fqdn" {
+  value = var.application_gateway_enabled ? azurerm_public_ip.application_gateway[0].fqdn : null
 }

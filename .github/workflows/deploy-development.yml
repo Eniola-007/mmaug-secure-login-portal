@@ -42,6 +42,7 @@ jobs:
           TF_VAR_entra_spa_client_id: ${{ vars.ENTRA_SPA_CLIENT_ID }}
           TF_VAR_postgres_admin_password: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
           TF_VAR_application_gateway_enabled: ${{ vars.APPLICATION_GATEWAY_ENABLED || 'false' }}
+          TF_VAR_application_gateway_dns_label: ${{ vars.APPLICATION_GATEWAY_DNS_LABEL || 'mmaug-secure-portal' }}
           TF_VAR_application_gateway_host_name: ${{ vars.APPLICATION_GATEWAY_HOST_NAME }}
           TF_VAR_application_gateway_certificate_secret_id: ${{ secrets.APPLICATION_GATEWAY_CERTIFICATE_SECRET_ID }}
         run: terraform apply -auto-approve

@@ -13,6 +13,11 @@
 - Managed-identity GitHub workflow added to create the SPA/API registrations, their
   Enterprise Applications, `access_as_user`, preauthorization, and delegated consent.
 - The approved identity now trusts the exact GitHub `development` environment subject.
+- The obsolete `id-mmaug-github-deploy` identity was permanently deleted; Azure now has
+  only the approved `id-mmaug-secure-login-portal` identity in this resource group.
+- PostgreSQL B1ms is approved for the development environment.
+- Azure confirmed `mmaug-secure-portal.northeurope.cloudapp.azure.com` was available;
+  Terraform now assigns that DNS label when the gateway Public IP is created.
 - Terraform includes the approved Linux App Service Plan and an HTTPS Application
   Gateway WAF_v2 with OWASP 3.2 Prevention mode and `/api/*` path routing.
 - Eight synthetic accounts, role dashboards, admin controls, audit events, recovery,
@@ -23,13 +28,12 @@
 
 1. Run `Bootstrap Entra applications` using `id-mmaug-secure-login-portal` and confirm its
    Microsoft Graph permission is effective.
-2. Provide the approved portal DNS host name and a versionless Key Vault TLS certificate
-   secret ID, then grant the identity certificate-secret read access.
-3. Approve the continuously billed B1ms PostgreSQL resource or select another SKU. The
-   App Service Plan and Application Gateway WAF_v2 are already approved.
-4. Deploy, point DNS at the gateway public IP, then rerun the Entra bootstrap with the
+2. Obtain a trusted TLS certificate for the final hostname, import it to Key Vault, and
+   grant the identity certificate-secret read access.
+3. Deploy the approved B1 App Service Plan, B1ms PostgreSQL, and Application Gateway
+   WAF_v2, then rerun the Entra bootstrap with the
    final gateway HTTPS URL.
-5. Enroll eight synthetic accounts with their real tenant and object IDs.
-6. Complete the sign-in, role-isolation, WAF, audit, recovery, and monitoring demonstration.
-7. Approve Foundry region, model, quota, tools, and budget before replacing the current
+4. Enroll eight synthetic accounts with their real tenant and object IDs.
+5. Complete the sign-in, role-isolation, WAF, audit, recovery, and monitoring demonstration.
+6. Approve Foundry region, model, quota, tools, and budget before replacing the current
    constrained role-specific assistant demo.

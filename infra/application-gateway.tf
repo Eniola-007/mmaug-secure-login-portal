@@ -1,5 +1,6 @@
 locals {
-  application_gateway_name = "agw-${local.prefix}-${local.suffix}"
+  application_gateway_name     = "agw-${local.prefix}-${local.suffix}"
+  application_gateway_hostname = trimspace(var.application_gateway_host_name) != "" ? var.application_gateway_host_name : "${var.application_gateway_dns_label}.${var.location}.cloudapp.azure.com"
 }
 
 resource "azurerm_public_ip" "application_gateway" {
@@ -10,6 +11,7 @@ resource "azurerm_public_ip" "application_gateway" {
   location            = var.location
   allocation_method   = "Static"
   sku                 = "Standard"
+  domain_name_label   = var.application_gateway_dns_label
   tags                = local.common_tags
 }
 
@@ -142,7 +144,7 @@ resource "azurerm_application_gateway" "portal" {
     frontend_ip_configuration_name = "public-ip"
     frontend_port_name             = "https"
     protocol                       = "Https"
-    host_name                      = var.application_gateway_host_name
+    host_name                      = local.application_gateway_hostname
     require_sni                    = true
     ssl_certificate_name           = "portal-certificate"
   }
@@ -152,7 +154,7 @@ resource "azurerm_application_gateway" "portal" {
     frontend_ip_configuration_name = "public-ip"
     frontend_port_name             = "http"
     protocol                       = "Http"
-    host_name                      = var.application_gateway_host_name
+    host_name                      = local.application_gateway_hostname
   }
 
   url_path_map {
@@ -194,8 +196,8 @@ resource "azurerm_application_gateway" "portal" {
 
   lifecycle {
     precondition {
-      condition     = trimspace(var.application_gateway_host_name) != "" && trimspace(var.application_gateway_certificate_secret_id) != ""
-      error_message = "Application Gateway requires an approved DNS host name and a versionless Key Vault certificate secret ID."
+      condition     = trimspace(var.application_gateway_certificate_secret_id) != ""
+      error_message = "Application Gateway requires a versionless Key Vault certificate secret ID for its HTTPS listener."
     }
   }
 }

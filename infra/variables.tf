@@ -72,9 +72,20 @@ variable "application_gateway_enabled" {
 }
 
 variable "application_gateway_host_name" {
-  description = "Public DNS host name used by the HTTPS Application Gateway listener."
+  description = "Optional custom DNS host name. When empty, the Azure-provided cloudapp.azure.com hostname is used."
   type        = string
   default     = ""
+}
+
+variable "application_gateway_dns_label" {
+  description = "Azure Public IP DNS label. The resulting regional cloudapp.azure.com name must remain available until deployment."
+  type        = string
+  default     = "mmaug-secure-portal"
+
+  validation {
+    condition     = can(regex("^[a-z][a-z0-9-]{1,61}[a-z0-9]$", var.application_gateway_dns_label))
+    error_message = "application_gateway_dns_label must be a valid Azure regional DNS label."
+  }
 }
 
 variable "application_gateway_certificate_secret_id" {
