@@ -63,6 +63,7 @@ resource "azurerm_subnet" "database" {
   resource_group_name  = data.azurerm_resource_group.project.name
   virtual_network_name = azurerm_virtual_network.portal.name
   address_prefixes     = ["10.42.2.0/24"]
+  service_endpoints    = ["Microsoft.Storage"]
 
   delegation {
     name = "postgres-delegation"
@@ -152,6 +153,7 @@ resource "azurerm_postgresql_flexible_server" "portal" {
   name                          = "psql-${local.prefix}-${local.suffix}"
   resource_group_name           = data.azurerm_resource_group.project.name
   location                      = var.location
+  zone                          = "1"
   version                       = "16"
   delegated_subnet_id           = azurerm_subnet.database.id
   private_dns_zone_id           = azurerm_private_dns_zone.postgres.id
