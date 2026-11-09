@@ -242,6 +242,7 @@ resource "azurerm_linux_web_app" "api" {
     ApplicationInsightsAgent_EXTENSION_VERSION = "~3"
     SCM_DO_BUILD_DURING_DEPLOYMENT             = "false"
     ENABLE_ORYX_BUILD                          = "false"
+    WEBSITES_CONTAINER_START_TIME_LIMIT        = "600"
     WEBSITES_PORT                              = "8000"
   }
 
@@ -261,15 +262,19 @@ resource "azurerm_linux_web_app" "frontend" {
     always_on           = var.app_service_sku != "F1"
     ftps_state          = "Disabled"
     minimum_tls_version = "1.2"
-    app_command_line    = "pm2 serve /home/site/wwwroot --no-daemon --spa"
+    app_command_line    = "python -m http.server 8000 --directory /home/site/wwwroot"
     application_stack {
-      node_version = "20-lts"
+      python_version = "3.12"
     }
   }
 
   app_settings = {
     APPLICATIONINSIGHTS_CONNECTION_STRING      = azurerm_application_insights.portal.connection_string
     ApplicationInsightsAgent_EXTENSION_VERSION = "~3"
+    SCM_DO_BUILD_DURING_DEPLOYMENT             = "false"
+    ENABLE_ORYX_BUILD                          = "false"
+    WEBSITES_CONTAINER_START_TIME_LIMIT        = "600"
+    WEBSITES_PORT                              = "8000"
   }
 
   tags = local.common_tags
