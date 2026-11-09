@@ -242,6 +242,7 @@ resource "azurerm_linux_web_app" "api" {
     ApplicationInsightsAgent_EXTENSION_VERSION = "~3"
     SCM_DO_BUILD_DURING_DEPLOYMENT             = "false"
     ENABLE_ORYX_BUILD                          = "false"
+    PYTHONPATH                                 = "/home/site/wwwroot/.python_packages/lib/site-packages"
     WEBSITES_CONTAINER_START_TIME_LIMIT        = "600"
     WEBSITES_PORT                              = "8000"
   }
