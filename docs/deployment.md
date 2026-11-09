@@ -12,15 +12,37 @@
 - Deployment client ID: `5dcac9f2-d372-456b-a622-f395fc57a1c3`
 - Deployment principal ID: `80e66122-a06c-4c46-a778-9e1002320189`
 
-## 2. Create Microsoft Entra registrations
+## 2. Bootstrap Microsoft identity applications
 
-Create one SPA registration and one API registration. On the API, expose delegated
-scope `access_as_user` with Application ID URI `api://<API_CLIENT_ID>`. Add that scope
-to the SPA and grant consent. Configure SPA redirect URIs for `http://localhost:5173`
-and the deployed frontend HTTPS URL. Do not create a client secret.
+Run the `Bootstrap Entra applications` workflow in the GitHub `development`
+environment. It authenticates as `id-mmaug-github-deploy` through OIDC and idempotently:
 
-Map the eight synthetic users' Entra object IDs into the database before an Entra
-sign-in demonstration. The seed object IDs are local placeholders only.
+- creates multitenant SPA and API application registrations;
+- creates both home-tenant Enterprise Applications;
+- exposes `api://<API_CLIENT_ID>/access_as_user`;
+- grants the SPA delegated access and tenant-wide consent;
+- configures `http://localhost:5173`; and
+- saves `ENTRA_API_CLIENT_ID` and `ENTRA_SPA_CLIENT_ID` as environment variables.
+
+No client secret is created. The managed identity needs the approved Microsoft Graph
+application/service-principal and delegated-permission-grant permissions. Azure
+Contributor on the resource group does not provide Microsoft Graph permission.
+
+After deployment, rerun the same workflow with the deployed frontend HTTPS URL. Then
+review or remove broad Graph bootstrap permission from the deployment identity.
+
+Map each synthetic or external account's tenant ID and object ID into PostgreSQL before
+the sign-in demonstration. The `dev-*` seed IDs remain local placeholders only. From
+the backend App Service SSH session, validate and apply an enrollment file:
+
+```powershell
+python -m app.enroll_users --file /tmp/mmaug-enrollment.json --dry-run
+python -m app.enroll_users --file /tmp/mmaug-enrollment.json
+```
+
+Use [enrollment.template.json](enrollment.template.json) as the shape. Do not include
+passwords or access tokens. An authenticated but unenrolled user sees the required
+`tenant_id:object_id` enrollment reference in the portal.
 
 ## 3. Configure GitHub OIDC
 
@@ -77,7 +99,7 @@ budget/SKU decision.
 Run the `Deploy development` workflow. Record the workflow URL and verify:
 
 1. `/health/ready` returns HTTP 200.
-2. A valid Entra user can sign in and sign out.
+2. An enrolled Microsoft work, school, guest, or personal account can sign in and out.
 3. An invalid or unenrolled user is denied.
 4. Each role receives only its dashboard.
 5. A student cannot fetch another user's profile.

@@ -19,5 +19,6 @@ frontend/vite.config.d.ts
 *.tfstate.*
 *.tfplan
 terraform.tfvars
+entra-apps*.json
 .tmp-pypdf/
 .DS_Store

@@ -27,9 +27,10 @@ def db_session() -> Generator[Session, None, None]:
     Base.metadata.create_all(engine)
     TestingSession = sessionmaker(bind=engine, expire_on_commit=False)
     with TestingSession() as session:
-        for object_id, email, name, role in SEED_USERS:
+        for tenant_id, object_id, email, name, role in SEED_USERS:
             session.add(
                 User(
+                    entra_tenant_id=tenant_id,
                     entra_object_id=object_id,
                     email=email,
                     display_name=name,

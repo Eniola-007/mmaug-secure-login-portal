@@ -22,8 +22,22 @@ export async function apiRequest<T>(
 
   const response = await fetch(`${apiBase}${path}`, { ...init, headers });
   if (!response.ok) {
-    const body = (await response.json().catch(() => null)) as { detail?: string } | null;
-    throw new Error(body?.detail ?? `Request failed (${response.status})`);
+    const body = (await response.json().catch(() => null)) as {
+      detail?: string | {
+        message?: string;
+        tenant_id?: string;
+        object_id?: string;
+      };
+    } | null;
+    if (body?.detail && typeof body.detail === "object") {
+      const reference = body.detail.tenant_id && body.detail.object_id
+        ? ` Enrollment reference: ${body.detail.tenant_id}:${body.detail.object_id}`
+        : "";
+      throw new Error(`${body.detail.message ?? `Request failed (${response.status})`}${reference}`);
+    }
+    throw new Error(
+      typeof body?.detail === "string" ? body.detail : `Request failed (${response.status})`,
+    );
   }
   return response.json() as Promise<T>;
 }

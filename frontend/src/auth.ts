@@ -4,14 +4,14 @@ import {
   type Configuration,
 } from "@azure/msal-browser";
 
-const tenantId = import.meta.env.VITE_ENTRA_TENANT_ID ?? "";
+const authorityTenant = import.meta.env.VITE_ENTRA_AUTHORITY_TENANT ?? "common";
 const spaClientId = import.meta.env.VITE_ENTRA_SPA_CLIENT_ID ?? "";
 const apiClientId = import.meta.env.VITE_ENTRA_API_CLIENT_ID ?? "";
 
 const configuration: Configuration = {
   auth: {
     clientId: spaClientId || "00000000-0000-0000-0000-000000000000",
-    authority: `https://login.microsoftonline.com/${tenantId}`,
+    authority: `https://login.microsoftonline.com/${authorityTenant}`,
     redirectUri: window.location.origin,
     postLogoutRedirectUri: window.location.origin,
   },

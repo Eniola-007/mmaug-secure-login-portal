@@ -2,9 +2,14 @@
 
 ## Identity and authorization
 
-- Microsoft Entra ID performs authentication, MFA, recovery, and token issuance.
+- The Microsoft identity platform performs authentication, MFA, recovery, and token issuance.
+- The `common` authority accepts Microsoft work, school, guest, and personal accounts.
 - The SPA requests an access token for the API using authorization code + PKCE.
-- FastAPI validates signature, issuer, audience, expiry, object ID, and `access_as_user` scope.
+- FastAPI validates signature, tenant-bound v2 issuer, signing-key issuer, audience,
+  expiry, tenant ID, object ID, and `access_as_user` scope.
+- Tenant ID and object ID form the authorization lookup key because object IDs are only
+  unique inside a tenant.
+- A successfully authenticated but unenrolled identity receives no portal data.
 - Portal role and active status are loaded server-side from PostgreSQL for every request.
 - Students and teachers can read only their own profile. Only administrators can list or change users.
 - Administrative changes are deterministic API operations and create an audit event.
@@ -17,7 +22,9 @@ backend and receives narrowly scoped data-plane roles such as Key Vault Secrets 
 
 `id-mmaug-github-deploy` is reserved for deployment. Its GitHub federated credential
 must trust an exact repository and GitHub environment subject. It must not be attached
-to the running application.
+to the running application. Temporary Microsoft Graph bootstrap permission may create
+the two application registrations, Enterprise Applications, and delegated permission
+grant. Review or remove that directory permission after bootstrap.
 
 ## Threats and controls
 

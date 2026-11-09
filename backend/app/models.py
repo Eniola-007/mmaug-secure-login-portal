@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -16,9 +16,17 @@ class Role(enum.StrEnum):
 
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = (
+        UniqueConstraint(
+            "entra_tenant_id",
+            "entra_object_id",
+            name="uq_users_entra_identity",
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    entra_object_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    entra_tenant_id: Mapped[str] = mapped_column(String(36), index=True)
+    entra_object_id: Mapped[str] = mapped_column(String(64), index=True)
     email: Mapped[str] = mapped_column(String(320), unique=True, index=True)
     display_name: Mapped[str] = mapped_column(String(160))
     role: Mapped[Role] = mapped_column(Enum(Role, native_enum=False), index=True)

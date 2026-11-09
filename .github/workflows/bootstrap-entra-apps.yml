@@ -1,0 +1,52 @@
+name: Bootstrap Entra applications
+
+on:
+  workflow_dispatch:
+    inputs:
+      frontend_url:
+        description: Optional deployed frontend HTTPS URL
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  actions: write
+  contents: read
+  id-token: write
+
+jobs:
+  bootstrap:
+    environment: development
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Create app registrations and Enterprise Applications
+        shell: pwsh
+        run: >-
+          ./scripts/bootstrap-entra-apps.ps1
+          -TenantId "${{ vars.AZURE_TENANT_ID }}"
+          -FrontendUrl "${{ inputs.frontend_url }}"
+          -OutputPath entra-apps.json
+
+      - name: Save client IDs to the development environment
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $result = Get-Content -Raw entra-apps.json | ConvertFrom-Json
+          gh variable set ENTRA_API_CLIENT_ID --env development --body $result.api_client_id
+          gh variable set ENTRA_SPA_CLIENT_ID --env development --body $result.spa_client_id
+
+      - name: Upload bootstrap evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: entra-bootstrap
+          path: entra-apps.json
+          if-no-files-found: error
+          retention-days: 30

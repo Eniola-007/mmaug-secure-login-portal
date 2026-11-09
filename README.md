@@ -4,11 +4,16 @@ Production-oriented MVP for RFP `MMAUG-AIDB-RFP-002`.
 
 ## Architecture
 
-- React + TypeScript frontend with Microsoft Entra ID sign-in
+- React + TypeScript frontend with Microsoft work, school, guest, and personal account sign-in
 - FastAPI protected API with server-side role and account-status checks
 - PostgreSQL application profiles and append-only audit events
 - Azure App Service, Key Vault, Application Insights, and managed identity
 - Terraform infrastructure and GitHub Actions deployment through OIDC
+
+Authentication uses the Microsoft identity platform `common` authority. Authentication
+does not grant portal access: every account must be enrolled by its immutable Entra
+`tenant ID + object ID`, with its portal role stored in PostgreSQL. See
+[docs/architecture.md](docs/architecture.md).
 
 The MVP contains synthetic data only. It is not approved for real student data.
 

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useMsal } from "@azure/msal-react";
 import { apiRequest } from "./api";
 import { devAuthEnabled, loginRequest } from "./auth";
+import mmaugLogo from "./assets/mmaug-logo.png";
 import type { AuditEvent, DashboardData, PortalUser, Role } from "./types";
 
 const demoUsers = [
@@ -99,17 +100,38 @@ export default function App() {
     return (
       <main className="login-shell">
         <section className="login-card">
-          <div className="school-mark" aria-hidden="true">M</div>
+          <img className="school-logo" src={mmaugLogo} alt="MMAUG school seal" />
           <p className="eyebrow">MMAUG HIGH SCHOOL</p>
           <h1>One secure place for your school day.</h1>
-          <p className="muted">Sign in with your school Microsoft account to continue.</p>
-          <button className="primary full" onClick={() => void instance.loginRedirect(loginRequest)}>
+          <p className="muted">
+            Use any Microsoft work, school, guest, or personal account. Sign-in verifies who
+            you are; portal access is provided only after a school administrator enrolls you.
+          </p>
+          <button className="primary full" onClick={() => void instance.loginRedirect({ ...loginRequest, prompt: "select_account" })}>
             Sign in with Microsoft
           </button>
-          <a className="recovery" href="https://passwordreset.microsoftonline.com/">
-            Can't access your account?
-          </a>
+          <div className="recovery-links" aria-label="Account recovery">
+            <a href="https://passwordreset.microsoftonline.com/">Work or school recovery</a>
+            <a href="https://account.live.com/password/reset">Personal account recovery</a>
+          </div>
           {error && <p className="error">{error}</p>}
+        </section>
+      </main>
+    );
+  }
+
+  if (account && !devAuthEnabled && !currentUser && !loading && error) {
+    return (
+      <main className="login-shell">
+        <section className="login-card access-card" role="alert">
+          <img className="school-logo small" src={mmaugLogo} alt="MMAUG school seal" />
+          <p className="eyebrow">SIGN-IN COMPLETE</p>
+          <h1>Your identity is verified.</h1>
+          <p className="signed-in-as">Signed in as <strong>{account.username}</strong></p>
+          <p className="access-message">{error}</p>
+          <button className="primary full" onClick={() => void instance.logoutRedirect()}>
+            Sign out and use another account
+          </button>
         </section>
       </main>
     );
@@ -118,7 +140,7 @@ export default function App() {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <div className="brand"><span className="brand-mark">M</span><span>MMAUG<br /><small>HIGH SCHOOL</small></span></div>
+        <div className="brand"><img className="brand-logo" src={mmaugLogo} alt="" /><span>MMAUG<br /><small>HIGH SCHOOL</small></span></div>
         <nav aria-label="Portal navigation">
           <button className={view === "dashboard" ? "active" : ""} onClick={() => void openView("dashboard")}>Overview</button>
           <button className={view === "assistant" ? "active" : ""} onClick={() => void openView("assistant")}>My assistant</button>

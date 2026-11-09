@@ -16,16 +16,20 @@ h1 { font-size: clamp(2rem, 4vw, 3.5rem); line-height: 1.05; }
 .quiet { border: 1px solid #cad2ce; background: #fff; border-radius: 7px; padding: .55rem .8rem; color: #29463d; }
 .login-shell { min-height: 100vh; display: grid; place-items: center; padding: 2rem; background: radial-gradient(circle at 80% 10%, #d9c496 0, transparent 28%), linear-gradient(135deg, #0c3328 0 48%, #e9e3d4 48%); }
 .login-card { width: min(450px, 100%); background: #fffdf8; border-radius: 18px; padding: clamp(2rem, 6vw, 3.7rem); box-shadow: 0 28px 80px #0b211b55; }
-.school-mark, .brand-mark { display: grid; place-items: center; background: #c78d35; color: white; font-family: "Playfair Display", serif; font-weight: 700; }
-.school-mark { width: 58px; height: 58px; border-radius: 50% 50% 50% 15%; font-size: 2rem; margin-bottom: 2rem; }
+.school-logo { display: block; width: 104px; height: 104px; object-fit: contain; margin: 0 auto 1.5rem; filter: drop-shadow(0 10px 15px #102f2730); }
+.school-logo.small { width: 82px; height: 82px; }
 .login-card h1 { color: #133b30; }
-.recovery { display: block; text-align: center; margin-top: 1.25rem; color: #355f52; }
+.recovery-links { display: flex; justify-content: center; flex-wrap: wrap; gap: .55rem 1rem; margin-top: 1.25rem; font-size: .84rem; }
+.recovery-links a { color: #355f52; }
+.access-card { text-align: center; }
+.signed-in-as { color: #455e56; overflow-wrap: anywhere; }
+.access-message { margin: 1.2rem 0 1.5rem; padding: .9rem 1rem; border-radius: 8px; background: #fbe8d8; color: #7c3d14; line-height: 1.5; }
 .error { color: #a62d2d; }
 .app-shell { min-height: 100vh; display: grid; grid-template-columns: 250px 1fr; }
 .sidebar { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; padding: 2rem 1.25rem; color: #eef4f1; background: #12372d; }
 .brand { display: flex; align-items: center; gap: .8rem; font-weight: 700; letter-spacing: .04em; margin-bottom: 3rem; }
 .brand small { font-size: .58rem; letter-spacing: .14em; color: #b8c8c2; }
-.brand-mark { width: 38px; height: 38px; border-radius: 50% 50% 50% 12%; }
+.brand-logo { width: 48px; height: 48px; object-fit: contain; filter: drop-shadow(0 4px 8px #0005); }
 nav { display: grid; gap: .4rem; }
 nav button { text-align: left; border: 0; border-radius: 8px; padding: .8rem 1rem; color: #c7d4cf; background: transparent; }
 nav button:hover, nav button.active { background: #ffffff12; color: white; }

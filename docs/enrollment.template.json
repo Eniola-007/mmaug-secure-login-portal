@@ -1,0 +1,58 @@
+[
+  {
+    "tenant_id": "<tenant-guid>",
+    "object_id": "<amina-object-guid>",
+    "email": "student1@<verified-domain>",
+    "display_name": "Amina Student",
+    "role": "student"
+  },
+  {
+    "tenant_id": "<tenant-guid>",
+    "object_id": "<ben-object-guid>",
+    "email": "student2@<verified-domain>",
+    "display_name": "Ben Student",
+    "role": "student"
+  },
+  {
+    "tenant_id": "<tenant-guid>",
+    "object_id": "<chiara-object-guid>",
+    "email": "student3@<verified-domain>",
+    "display_name": "Chiara Student",
+    "role": "student"
+  },
+  {
+    "tenant_id": "<tenant-guid>",
+    "object_id": "<daniel-object-guid>",
+    "email": "student4@<verified-domain>",
+    "display_name": "Daniel Student",
+    "role": "student"
+  },
+  {
+    "tenant_id": "<tenant-guid>",
+    "object_id": "<elena-object-guid>",
+    "email": "student5@<verified-domain>",
+    "display_name": "Elena Student",
+    "role": "student"
+  },
+  {
+    "tenant_id": "<tenant-guid>",
+    "object_id": "<fatima-object-guid>",
+    "email": "teacher1@<verified-domain>",
+    "display_name": "Fatima Teacher",
+    "role": "teacher"
+  },
+  {
+    "tenant_id": "<tenant-guid>",
+    "object_id": "<george-object-guid>",
+    "email": "teacher2@<verified-domain>",
+    "display_name": "George Teacher",
+    "role": "teacher"
+  },
+  {
+    "tenant_id": "<tenant-guid>",
+    "object_id": "<helena-object-guid>",
+    "email": "admin@<verified-domain>",
+    "display_name": "Helena Administrator",
+    "role": "admin"
+  }
+]

@@ -3,7 +3,9 @@
 | RFP requirement | Implementation | Validation |
 |---|---|---|
 | Student, teacher, administrator | Database role enum and role-aware UI/API | Role dashboard test |
-| Secure sign-in/out | Entra OIDC authorization code + PKCE | Entra integration test |
+| Secure sign-in/out | Microsoft identity platform OIDC authorization code + PKCE | Integration test |
+| Broad account support | `common` authority for work, school, guest, and personal Microsoft accounts | Cross-account sign-in test |
+| Deny-by-default enrollment | Composite tenant/object ID lookup in PostgreSQL | Unenrolled-account 403 test |
 | Recovery | Entra password reset delegation | Recovery journey demo |
 | Protected API | JWT validation, scope, active status, server-side RBAC | 401/403 tests |
 | Account administration | Admin-only list, activation, deactivation, role update | Admin API test |

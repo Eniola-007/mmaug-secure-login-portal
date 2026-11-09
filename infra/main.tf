@@ -213,6 +213,7 @@ resource "azurerm_linux_web_app" "api" {
     ENVIRONMENT                                = var.environment
     DATABASE_URL                               = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.database_url.versionless_id})"
     ENTRA_TENANT_ID                            = var.tenant_id
+    ENTRA_AUTHORITY_TENANT                     = "common"
     ENTRA_API_CLIENT_ID                        = var.entra_api_client_id
     ENTRA_REQUIRED_SCOPE                       = "access_as_user"
     ALLOW_DEV_AUTH                             = "false"

@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     environment: Literal["development", "test", "uat", "production"] = "development"
     database_url: str = "sqlite:///./mmaug-local.db"
     entra_tenant_id: str = "71beefd7-29f4-4b9e-9cb2-e78b5dc851ad"
+    entra_authority_tenant: str = "common"
     entra_api_client_id: str = ""
     entra_required_scope: str = "access_as_user"
     allow_dev_auth: bool = False
@@ -32,12 +33,10 @@ class Settings(BaseSettings):
         return value
 
     @property
-    def issuer(self) -> str:
-        return f"https://login.microsoftonline.com/{self.entra_tenant_id}/v2.0"
-
-    @property
     def jwks_url(self) -> str:
-        return f"https://login.microsoftonline.com/{self.entra_tenant_id}/discovery/v2.0/keys"
+        return (
+            f"https://login.microsoftonline.com/{self.entra_authority_tenant}/discovery/v2.0/keys"
+        )
 
     def validate_security_mode(self) -> None:
         if self.environment in {"uat", "production"} and self.allow_dev_auth:
