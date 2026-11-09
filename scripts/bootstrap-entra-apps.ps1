@@ -23,14 +23,24 @@ function Invoke-Graph {
     )
 
     $arguments = @('rest', '--method', $Method, '--url', $Uri, '--output', 'json')
-    if ($null -ne $Body) {
-        $json = $Body | ConvertTo-Json -Depth 20 -Compress
-        $arguments += @('--headers', 'Content-Type=application/json', '--body', $json)
-    }
+    $bodyFile = $null
+    try {
+        if ($null -ne $Body) {
+            $json = $Body | ConvertTo-Json -Depth 20 -Compress
+            $bodyFile = [System.IO.Path]::GetTempFileName()
+            $json | Set-Content -LiteralPath $bodyFile -Encoding utf8NoBOM
+            $arguments += @('--headers', 'Content-Type=application/json', '--body', "@$bodyFile")
+        }
 
-    $raw = & az @arguments
-    if ($LASTEXITCODE -ne 0) {
-        throw "Microsoft Graph request failed: $Method $Uri"
+        $raw = & az @arguments
+        if ($LASTEXITCODE -ne 0) {
+            throw "Microsoft Graph request failed: $Method $Uri"
+        }
+    }
+    finally {
+        if ($bodyFile -and (Test-Path -LiteralPath $bodyFile)) {
+            Remove-Item -LiteralPath $bodyFile -Force
+        }
     }
     $text = ($raw | Out-String).Trim()
     if (-not $text) {
