@@ -38,25 +38,21 @@ variable "runtime_identity_name" {
 }
 
 variable "entra_api_client_id" {
-  description = "Client ID of the Entra API app registration."
+  description = "Client ID of the Entra API app registration. The zero UUID supports infrastructure-first deployment before administrator handoff."
   type        = string
+  default     = "00000000-0000-0000-0000-000000000000"
 }
 
 variable "entra_spa_client_id" {
-  description = "Client ID of the Entra SPA app registration."
+  description = "Client ID of the Entra SPA app registration. The zero UUID supports infrastructure-first deployment before administrator handoff."
   type        = string
+  default     = "00000000-0000-0000-0000-000000000000"
 }
 
 variable "postgres_admin_login" {
   description = "PostgreSQL bootstrap administrator login."
   type        = string
   default     = "mmaugpgadmin"
-}
-
-variable "postgres_admin_password" {
-  description = "PostgreSQL bootstrap password. Supply through a protected environment secret."
-  type        = string
-  sensitive   = true
 }
 
 variable "app_service_sku" {

@@ -10,8 +10,8 @@
 - Database identity changed from object ID alone to composite tenant ID plus object ID.
 - Unenrolled users receive clear feedback and a safe enrollment reference.
 - Controlled, idempotent database enrollment command added.
-- Managed-identity GitHub workflow added to create the SPA/API registrations, their
-  Enterprise Applications, `access_as_user`, preauthorization, and delegated consent.
+- Managed-identity GitHub workflow deploys infrastructure and application packages and
+  reports the direct frontend/API App Service URLs for administrator handoff.
 - The approved identity now trusts the exact GitHub `development` environment subject.
 - The obsolete `id-mmaug-github-deploy` identity was permanently deleted; Azure now has
   only the approved `id-mmaug-secure-login-portal` identity in this resource group.
@@ -28,13 +28,12 @@
 
 ## Live completion gates
 
-1. An Entra administrator runs `scripts/grant-graph-bootstrap-permissions.ps1`, then the
-   `Bootstrap Entra applications` workflow creates and configures the two applications.
-2. Obtain a trusted TLS certificate for the final hostname, import it to Key Vault, and
-   grant the identity certificate-secret read access.
-3. Deploy the approved B1 App Service Plan, B1ms PostgreSQL, and Application Gateway
-   WAF_v2, then rerun the Entra bootstrap with the
-   final gateway HTTPS URL.
+1. Run the infrastructure-first GitHub deployment and provide the returned Web App URL
+   to the Entra administrator.
+2. Receive the administrator-created SPA/API client IDs, configure GitHub variables, and
+   rerun deployment to activate MSAL.
+3. Obtain a trusted TLS certificate, enable Application Gateway WAF_v2, and add the final
+   gateway URL to the SPA redirects.
 4. Enroll eight synthetic accounts with their real tenant and object IDs.
 5. Complete the sign-in, role-isolation, WAF, audit, recovery, and monitoring demonstration.
 6. Approve Foundry region, model, quota, tools, and budget before replacing the current

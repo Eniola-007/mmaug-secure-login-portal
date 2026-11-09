@@ -1,7 +1,7 @@
 # Verification evidence — 9 November 2026
 
-This report records the parts of the MMAUG Secure Login Portal verified before the Entra
-administrator grants the temporary Microsoft Graph bootstrap permissions.
+This report records the parts of the MMAUG Secure Login Portal verified before the
+infrastructure-first deployment and Entra administrator handoff.
 
 ## Verified successfully
 
@@ -32,9 +32,9 @@ administrator grants the temporary Microsoft Graph bootstrap permissions.
 - GitHub Actions successfully exchanged its environment-bound OIDC assertion for an
   Azure token using the approved identity.
 
-The workflow proves GitHub-to-Azure OIDC login. Its next step is presently denied by
-Microsoft Graph because the identity has not yet received the administrator-approved
-`Application.ReadWrite.All` and `DelegatedPermissionGrant.ReadWrite.All` bootstrap roles.
+The workflow proves GitHub-to-Azure OIDC login. Under the revised separation of duties,
+the identity does not call Microsoft Graph; the administrator creates the app
+registrations after receiving the deployed Web App URL.
 
 ## Pending administrator-dependent verification
 
@@ -44,5 +44,5 @@ Microsoft Graph because the identity has not yet received the administrator-appr
 - Full Terraform deployment of App Service, PostgreSQL, Application Gateway, WAF, and TLS.
 - Enrollment and role-isolation demonstration with eight real Entra object IDs.
 
-These pending items cannot be represented as passed until an Entra administrator grants
-the temporary Graph roles and the live deployment and acceptance tests complete.
+These pending items cannot be represented as passed until the live deployment returns its
+URL, the administrator configures Entra, and acceptance testing completes.

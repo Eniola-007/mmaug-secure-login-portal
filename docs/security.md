@@ -19,11 +19,11 @@
 
 `id-mmaug-secure-login-portal` is the only approved managed identity. Its GitHub
 federated credential trusts the exact repository and `development` environment subject.
-It is used for deployment and is attached to the API and Application Gateway. Temporary
-Microsoft Graph bootstrap permission may create the two application registrations,
-Enterprise Applications, and delegated permission grant. Review or remove that Graph
-permission after bootstrap. Because deployment and runtime duties share one identity,
-protect the GitHub environment with branch restrictions and required reviewers.
+It deploys infrastructure and code and is attached to the API and Application Gateway.
+It has no Microsoft Graph directory permission. The Entra administrator separately owns
+app registrations, API scopes, consent, and redirect URIs. Because deployment and runtime
+duties share one identity, protect the GitHub environment with branch restrictions and
+required reviewers.
 
 ## Threats and controls
 

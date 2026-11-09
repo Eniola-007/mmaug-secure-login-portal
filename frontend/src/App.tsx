@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useMsal } from "@azure/msal-react";
 import { apiRequest } from "./api";
-import { devAuthEnabled, loginRequest } from "./auth";
+import { authConfigured, devAuthEnabled, loginRequest } from "./auth";
 import mmaugLogo from "./assets/mmaug-logo.png";
 import type { AuditEvent, DashboardData, PortalUser, Role } from "./types";
 
@@ -107,9 +107,15 @@ export default function App() {
             Use any Microsoft work, school, guest, or personal account. Sign-in verifies who
             you are; portal access is provided only after a school administrator enrolls you.
           </p>
-          <button className="primary full" onClick={() => void instance.loginRedirect({ ...loginRequest, prompt: "select_account" })}>
-            Sign in with Microsoft
-          </button>
+          {authConfigured ? (
+            <button className="primary full" onClick={() => void instance.loginRedirect({ ...loginRequest, prompt: "select_account" })}>
+              Sign in with Microsoft
+            </button>
+          ) : (
+            <div className="dev-banner" role="status">
+              Deployment is live. Microsoft sign-in is pending administrator app registration.
+            </div>
+          )}
           <div className="recovery-links" aria-label="Account recovery">
             <a href="https://passwordreset.microsoftonline.com/">Work or school recovery</a>
             <a href="https://account.live.com/password/reset">Personal account recovery</a>

@@ -15,6 +15,12 @@ resource "random_string" "suffix" {
   special = false
 }
 
+resource "random_password" "postgres" {
+  length           = 32
+  special          = true
+  override_special = "!#$%&*()-_=+[]{}:?"
+}
+
 locals {
   prefix = "mmaug-${var.environment}"
   suffix = random_string.suffix.result
@@ -151,7 +157,7 @@ resource "azurerm_postgresql_flexible_server" "portal" {
   private_dns_zone_id           = azurerm_private_dns_zone.postgres.id
   public_network_access_enabled = false
   administrator_login           = var.postgres_admin_login
-  administrator_password        = var.postgres_admin_password
+  administrator_password        = random_password.postgres.result
   sku_name                      = var.postgres_sku
   storage_mb                    = 32768
   auto_grow_enabled             = true
@@ -174,7 +180,7 @@ resource "azurerm_key_vault_secret" "database_url" {
   value_wo = format(
     "postgresql+psycopg://%s:%s@%s:5432/%s?sslmode=require",
     var.postgres_admin_login,
-    urlencode(var.postgres_admin_password),
+    urlencode(random_password.postgres.result),
     azurerm_postgresql_flexible_server.portal.fqdn,
     azurerm_postgresql_flexible_server_database.portal.name
   )

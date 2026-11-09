@@ -27,9 +27,30 @@ jobs:
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - uses: hashicorp/setup-terraform@v3
+      - name: Bootstrap protected Terraform state
+        shell: bash
+        run: |
+          az storage account create \
+            --name stmmaugtfstate9a2ab22e \
+            --resource-group rg_mmaug_high_school \
+            --location northeurope \
+            --sku Standard_LRS \
+            --min-tls-version TLS1_2 \
+            --allow-blob-public-access false \
+            --tags project=mmaug-secure-login-portal environment=development managed-by=github-oidc \
+            --output none
+          state_key="$(az storage account keys list --resource-group rg_mmaug_high_school --account-name stmmaugtfstate9a2ab22e --query '[0].value' --output tsv)"
+          echo "::add-mask::$state_key"
+          az storage container create --name tfstate --account-name stmmaugtfstate9a2ab22e --account-key "$state_key" --output none
+          echo "ARM_ACCESS_KEY=$state_key" >> "$GITHUB_ENV"
       - name: Terraform init
         working-directory: infra
-        run: terraform init
+        run: >-
+          terraform init
+          -backend-config="resource_group_name=rg_mmaug_high_school"
+          -backend-config="storage_account_name=stmmaugtfstate9a2ab22e"
+          -backend-config="container_name=tfstate"
+          -backend-config="key=development.tfstate"
       - name: Terraform validate
         working-directory: infra
         run: terraform validate
@@ -38,15 +59,21 @@ jobs:
         env:
           TF_VAR_subscription_id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
           TF_VAR_tenant_id: ${{ vars.AZURE_TENANT_ID }}
-          TF_VAR_entra_api_client_id: ${{ vars.ENTRA_API_CLIENT_ID }}
-          TF_VAR_entra_spa_client_id: ${{ vars.ENTRA_SPA_CLIENT_ID }}
-          TF_VAR_postgres_admin_password: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
+          TF_VAR_entra_api_client_id: ${{ vars.ENTRA_API_CLIENT_ID || '00000000-0000-0000-0000-000000000000' }}
+          TF_VAR_entra_spa_client_id: ${{ vars.ENTRA_SPA_CLIENT_ID || '00000000-0000-0000-0000-000000000000' }}
           TF_VAR_application_gateway_enabled: ${{ vars.APPLICATION_GATEWAY_ENABLED || 'false' }}
           TF_VAR_application_gateway_dns_label: ${{ vars.APPLICATION_GATEWAY_DNS_LABEL || 'mmaug-secure-portal' }}
           TF_VAR_application_gateway_public_ip_name: pip-mmaug-secure-portal
           TF_VAR_application_gateway_host_name: ${{ vars.APPLICATION_GATEWAY_HOST_NAME }}
           TF_VAR_application_gateway_certificate_secret_id: ${{ secrets.APPLICATION_GATEWAY_CERTIFICATE_SECRET_ID }}
         run: terraform apply -auto-approve
+
+      - name: Capture deployment URLs
+        working-directory: infra
+        shell: bash
+        run: |
+          echo "API_APP_URL=$(terraform output -raw api_url)" >> "$GITHUB_ENV"
+          echo "FRONTEND_APP_URL=$(terraform output -raw frontend_url)" >> "$GITHUB_ENV"
 
       - uses: actions/setup-python@v5
         with:
@@ -59,11 +86,10 @@ jobs:
 
       - name: Build deployment packages
         env:
-          VITE_API_BASE_URL: ${{ vars.API_BASE_URL }}
           VITE_ENTRA_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
           VITE_ENTRA_AUTHORITY_TENANT: common
-          VITE_ENTRA_SPA_CLIENT_ID: ${{ vars.ENTRA_SPA_CLIENT_ID }}
-          VITE_ENTRA_API_CLIENT_ID: ${{ vars.ENTRA_API_CLIENT_ID }}
+          VITE_ENTRA_SPA_CLIENT_ID: ${{ vars.ENTRA_SPA_CLIENT_ID || '00000000-0000-0000-0000-000000000000' }}
+          VITE_ENTRA_API_CLIENT_ID: ${{ vars.ENTRA_API_CLIENT_ID || '00000000-0000-0000-0000-000000000000' }}
           VITE_DEV_AUTH: "false"
         run: |
           (cd backend && zip -r ../backend.zip app migrations alembic.ini requirements.txt)
@@ -74,4 +100,12 @@ jobs:
       - name: Deploy frontend
         run: az webapp deploy --resource-group rg_mmaug_high_school --name "$(terraform -chdir=infra output -raw frontend_app_name)" --src-path frontend.zip --type zip --clean true
       - name: Verify health
-        run: curl --fail --retry 6 --retry-delay 10 "$(terraform -chdir=infra output -raw api_url)/health/ready"
+        run: |
+          curl --fail --retry 12 --retry-delay 10 "$API_APP_URL/health/ready"
+          curl --fail --retry 12 --retry-delay 10 "$FRONTEND_APP_URL/"
+          {
+            echo "### Development deployment"
+            echo "- Frontend URL: $FRONTEND_APP_URL"
+            echo "- API URL: $API_APP_URL"
+            echo "- MSAL status: pending administrator app registrations"
+          } >> "$GITHUB_STEP_SUMMARY"

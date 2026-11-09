@@ -11,6 +11,10 @@ Production-oriented MVP for RFP `MMAUG-AIDB-RFP-002`.
   and one approved user-assigned managed identity
 - Terraform infrastructure and GitHub Actions deployment through OIDC
 
+Deployment is infrastructure-first: the managed identity deploys the Web Apps and returns
+the frontend URL; the Entra administrator then creates the SPA/API registrations and
+configures MSAL without granting the deployment identity Microsoft Graph permissions.
+
 Authentication uses the Microsoft identity platform `common` authority. Authentication
 does not grant portal access: every account must be enrolled by its immutable Entra
 `tenant ID + object ID`, with its portal role stored in PostgreSQL. See

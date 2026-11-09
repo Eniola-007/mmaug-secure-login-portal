@@ -12,8 +12,7 @@ terraform {
     }
   }
 
-  # Configure an Azure Storage backend after running scripts/bootstrap-state.ps1.
-  # backend "azurerm" {}
+  backend "azurerm" {}
 }
 
 provider "azurerm" {

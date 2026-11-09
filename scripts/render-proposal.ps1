@@ -9,6 +9,7 @@ $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $inputFile = [System.IO.Path]::GetFullPath((Join-Path $repositoryRoot $InputPath))
 $outputFile = [System.IO.Path]::GetFullPath((Join-Path $repositoryRoot $OutputPath))
 $logoFile = [System.IO.Path]::GetFullPath((Join-Path $repositoryRoot 'frontend/src/assets/mmaug-logo.png'))
+$architectureFile = [System.IO.Path]::GetFullPath((Join-Path $repositoryRoot 'docs/architecture-microsoft.svg'))
 $edge = 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
 
 if (-not (Test-Path -LiteralPath $inputFile)) {
@@ -20,6 +21,8 @@ if (-not (Test-Path -LiteralPath $edge)) {
 
 $rendered = ConvertFrom-Markdown -Path $inputFile
 $logoUri = ([Uri]$logoFile).AbsoluteUri
+$architectureUri = ([Uri]$architectureFile).AbsoluteUri
+$proposalHtml = $rendered.Html.Replace('src="architecture-microsoft.svg"', "src=`"$architectureUri`"")
 $html = @"
 <!doctype html>
 <html lang="en">
@@ -46,7 +49,7 @@ $html = @"
 </head>
 <body>
 <div class="brand"><img src="$logoUri" alt="MMAUG logo"><div>MALTA MICROSOFT AI USER GROUP</div></div>
-$($rendered.Html)
+$proposalHtml
 </body>
 </html>
 "@
