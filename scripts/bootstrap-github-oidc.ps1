@@ -2,14 +2,16 @@
 param(
     [Parameter(Mandatory)] [string] $GitHubOwner,
     [Parameter(Mandatory)] [string] $GitHubRepository,
+    [string] $GitHubOwnerId = '78024150',
+    [string] $GitHubRepositoryId = '1450348387',
     [ValidateSet('development', 'uat', 'production')] [string] $Environment = 'development',
     [string] $ResourceGroup = 'rg_mmaug_high_school',
     [string] $IdentityName = 'id-mmaug-secure-login-portal'
 )
 
 $ErrorActionPreference = 'Stop'
-$subject = "repo:$GitHubOwner/$GitHubRepository`:environment:$Environment"
-$credentialName = "github-$Environment"
+$subject = "repo:$GitHubOwner@$GitHubOwnerId/$GitHubRepository@$GitHubRepositoryId`:environment:$Environment"
+$credentialName = "github-$Environment-repository-id"
 
 $identityJson = az identity show --resource-group $ResourceGroup --name $IdentityName --output json 2>$null
 if (-not $identityJson) {

@@ -88,6 +88,12 @@ variable "application_gateway_dns_label" {
   }
 }
 
+variable "application_gateway_public_ip_name" {
+  description = "Existing Standard static Public IP that reserves the approved Application Gateway DNS label."
+  type        = string
+  default     = "pip-mmaug-secure-portal"
+}
+
 variable "application_gateway_certificate_secret_id" {
   description = "Versionless Key Vault secret ID for the Application Gateway TLS certificate."
   type        = string

@@ -79,13 +79,17 @@ The obsolete `id-mmaug-github-deploy` identity was permanently deleted on 9 Nove
 2026 after confirming that it had no Azure role assignments. Only
 `id-mmaug-secure-login-portal` remains in the resource group.
 
+This GitHub organization customizes OIDC subjects with immutable owner and repository
+IDs. The working trust is
+`repo:Eniola-007@78024150/mmaug-secure-login-portal@1450348387:environment:development`.
+
 After the final HTTPS redirect URI and consent are configured, remove broad Microsoft
 Graph bootstrap permissions from the identity unless repeatable directory
 provisioning is an approved operational requirement.
 
 Application Gateway is the public HTTPS endpoint. The Azure-provided DNS label
 `mmaug-secure-portal.northeurope.cloudapp.azure.com` was available when checked on
-9 November 2026 but is not reserved until its Public IP is deployed. The gateway
+9 November 2026 and is now reserved by Standard static Public IP `68.219.97.185`. The gateway
 redirects HTTP to HTTPS, applies
 the OWASP 3.2 managed rules in Prevention mode, sends `/api/*` to FastAPI, and sends all
 other paths to the React frontend.

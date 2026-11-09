@@ -16,8 +16,10 @@
 - The obsolete `id-mmaug-github-deploy` identity was permanently deleted; Azure now has
   only the approved `id-mmaug-secure-login-portal` identity in this resource group.
 - PostgreSQL B1ms is approved for the development environment.
-- Azure confirmed `mmaug-secure-portal.northeurope.cloudapp.azure.com` was available;
-  Terraform now assigns that DNS label when the gateway Public IP is created.
+- `mmaug-secure-portal.northeurope.cloudapp.azure.com` is reserved on Standard static
+  Public IP `68.219.97.185` for the gateway.
+- GitHub OIDC login with the single managed identity is verified using the repository-ID
+  subject. The obsolete name-based federated credential was removed.
 - Terraform includes the approved Linux App Service Plan and an HTTPS Application
   Gateway WAF_v2 with OWASP 3.2 Prevention mode and `/api/*` path routing.
 - Eight synthetic accounts, role dashboards, admin controls, audit events, recovery,
@@ -26,8 +28,8 @@
 
 ## Live completion gates
 
-1. Run `Bootstrap Entra applications` using `id-mmaug-secure-login-portal` and confirm its
-   Microsoft Graph permission is effective.
+1. An Entra administrator runs `scripts/grant-graph-bootstrap-permissions.ps1`, then the
+   `Bootstrap Entra applications` workflow creates and configures the two applications.
 2. Obtain a trusted TLS certificate for the final hostname, import it to Key Vault, and
    grant the identity certificate-secret read access.
 3. Deploy the approved B1 App Service Plan, B1ms PostgreSQL, and Application Gateway

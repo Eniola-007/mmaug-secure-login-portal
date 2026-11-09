@@ -30,8 +30,7 @@ Prevention mode before routing requests to the frontend or API.
 | Secrets and certificates | Key Vault references and access policies; secrets are not committed to source or copied into application settings |
 | Monitoring | Workspace-based Application Insights and Log Analytics |
 
-Azure reported the proposed DNS label as available on 9 November 2026. Availability is
-not a reservation; Terraform reserves it when the gateway Public IP is created.
+The DNS name is reserved on Standard static Public IP `68.219.97.185` in North Europe.
 
 ## Identity and access
 
@@ -57,6 +56,9 @@ Because one identity combines deployment and runtime duties, the GitHub `develop
 environment must use protected branches and required reviewers. Broad Microsoft Graph
 bootstrap permissions should be removed after the final app registrations, consent, and
 redirect URI are verified.
+
+The verified GitHub subject uses immutable organization and repository IDs:
+`repo:Eniola-007@78024150/mmaug-secure-login-portal@1450348387:environment:development`.
 
 ## Network and WAF controls
 

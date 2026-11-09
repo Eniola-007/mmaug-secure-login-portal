@@ -27,7 +27,7 @@ output "runtime_identity_client_id" {
 }
 
 output "application_gateway_public_ip" {
-  value = var.application_gateway_enabled ? azurerm_public_ip.application_gateway[0].ip_address : null
+  value = data.azurerm_public_ip.application_gateway.ip_address
 }
 
 output "portal_url" {
@@ -35,5 +35,5 @@ output "portal_url" {
 }
 
 output "application_gateway_fqdn" {
-  value = var.application_gateway_enabled ? azurerm_public_ip.application_gateway[0].fqdn : null
+  value = data.azurerm_public_ip.application_gateway.fqdn
 }

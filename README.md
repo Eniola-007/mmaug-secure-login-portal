@@ -19,9 +19,9 @@ does not grant portal access: every account must be enrolled by its immutable En
 The MVP contains synthetic data only. It is not approved for real student data.
 
 The proposed public endpoint is
-`https://mmaug-secure-portal.northeurope.cloudapp.azure.com`. Azure confirmed the label
-was available on 9 November 2026; it is reserved only when the Terraform Public IP is
-created. The solution uses managed identity and GitHub OIDC instead of a client secret.
+`https://mmaug-secure-portal.northeurope.cloudapp.azure.com`, reserved on Standard static
+Public IP `68.219.97.185`. The solution uses managed identity and GitHub OIDC instead of
+a client secret.
 
 ## Local development
 

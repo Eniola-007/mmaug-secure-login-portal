@@ -9,8 +9,9 @@
 - Runtime UAMI: `id-mmaug-secure-login-portal`
 - Approved UAMI client ID: `9724b573-ba41-4fc3-86ee-db1f6a892d69`
 - Approved UAMI principal ID: `6d15404b-a6d8-4019-b638-609f1c75723d`
-- GitHub OIDC subject: `repo:Eniola-007/mmaug-secure-login-portal:environment:development`
+- GitHub OIDC subject: `repo:Eniola-007@78024150/mmaug-secure-login-portal@1450348387:environment:development`
 - Proposed Azure DNS name: `mmaug-secure-portal.northeurope.cloudapp.azure.com`
+- Reserved Standard static Public IP: `pip-mmaug-secure-portal` (`68.219.97.185`)
 - PostgreSQL development SKU: `B_Standard_B1ms` (approved 9 November 2026)
 
 ## 2. Bootstrap Microsoft identity applications
@@ -28,6 +29,18 @@ environment. It authenticates as `id-mmaug-secure-login-portal` through OIDC and
 No client secret is created. The managed identity needs the approved Microsoft Graph
 application/service-principal and delegated-permission-grant permissions. Azure
 Contributor on the resource group does not provide Microsoft Graph permission.
+
+An Entra Privileged Role Administrator or Global Administrator must run the following
+once from an authenticated Azure Cloud Shell or administrator workstation:
+
+```powershell
+.\scripts\grant-graph-bootstrap-permissions.ps1
+```
+
+The script idempotently assigns `Application.ReadWrite.All` and
+`DelegatedPermissionGrant.ReadWrite.All` to the approved identity. Rerun the Entra
+bootstrap workflow, verify the applications and consent, and then remove those broad
+Graph roles.
 
 After deployment, rerun the same workflow with the deployed frontend HTTPS URL. Then
 review or remove broad Graph bootstrap permission from the approved identity.
@@ -56,8 +69,8 @@ After the GitHub owner and repository are known:
   -Environment development
 ```
 
-Verified federated subject:
-`repo:Eniola-007/mmaug-secure-login-portal:environment:development`.
+Verified working federated subject:
+`repo:Eniola-007@78024150/mmaug-secure-login-portal@1450348387:environment:development`.
 
 The identity has Contributor at resource-group scope. Contributor can deploy resources,
 including the App Service Plan and Application Gateway, but cannot create Azure role
@@ -103,8 +116,9 @@ capacity and retention separately before promoting beyond development.
 
 Before setting `APPLICATION_GATEWAY_ENABLED=true`:
 
-1. Use the checked Azure label `mmaug-secure-portal`, producing
-   `mmaug-secure-portal.northeurope.cloudapp.azure.com`, or supply a school-owned domain.
+1. Use the reserved Azure label `mmaug-secure-portal`, producing
+   `mmaug-secure-portal.northeurope.cloudapp.azure.com` on `68.219.97.185`, or supply a
+   school-owned domain.
 2. Import a trusted certificate into Key Vault and record its **versionless secret ID**.
 3. Give `id-mmaug-secure-login-portal` read access to that certificate secret.
 4. Set the host-name variable and certificate-secret-ID secret in the GitHub

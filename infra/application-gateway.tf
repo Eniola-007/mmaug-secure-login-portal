@@ -3,16 +3,9 @@ locals {
   application_gateway_hostname = trimspace(var.application_gateway_host_name) != "" ? var.application_gateway_host_name : "${var.application_gateway_dns_label}.${var.location}.cloudapp.azure.com"
 }
 
-resource "azurerm_public_ip" "application_gateway" {
-  count = var.application_gateway_enabled ? 1 : 0
-
-  name                = "pip-${local.application_gateway_name}"
+data "azurerm_public_ip" "application_gateway" {
+  name                = var.application_gateway_public_ip_name
   resource_group_name = data.azurerm_resource_group.project.name
-  location            = var.location
-  allocation_method   = "Static"
-  sku                 = "Standard"
-  domain_name_label   = var.application_gateway_dns_label
-  tags                = local.common_tags
 }
 
 resource "azurerm_web_application_firewall_policy" "portal" {
@@ -71,7 +64,7 @@ resource "azurerm_application_gateway" "portal" {
 
   frontend_ip_configuration {
     name                 = "public-ip"
-    public_ip_address_id = azurerm_public_ip.application_gateway[0].id
+    public_ip_address_id = data.azurerm_public_ip.application_gateway.id
   }
 
   frontend_port {
