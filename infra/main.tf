@@ -237,7 +237,9 @@ resource "azurerm_linux_web_app" "api" {
     ENTRA_API_CLIENT_ID                        = var.entra_api_client_id
     ENTRA_REQUIRED_SCOPE                       = "access_as_user"
     ALLOW_DEV_AUTH                             = "false"
-    CORS_ORIGINS                               = var.application_gateway_enabled ? "https://${local.application_gateway_hostname}" : "https://${azurerm_linux_web_app.frontend.default_hostname}"
+    CORS_ORIGINS = jsonencode([
+      var.application_gateway_enabled ? "https://${local.application_gateway_hostname}" : "https://${azurerm_linux_web_app.frontend.default_hostname}"
+    ])
     APPLICATIONINSIGHTS_CONNECTION_STRING      = azurerm_application_insights.portal.connection_string
     ApplicationInsightsAgent_EXTENSION_VERSION = "~3"
     SCM_DO_BUILD_DURING_DEPLOYMENT             = "false"
