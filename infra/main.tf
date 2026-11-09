@@ -117,7 +117,7 @@ resource "azurerm_application_insights" "portal" {
 }
 
 resource "azurerm_key_vault" "portal" {
-  name                       = "kv-${local.prefix}-${local.suffix}"
+  name                       = "kv-mmaug-${local.suffix}"
   location                   = var.location
   resource_group_name        = data.azurerm_resource_group.project.name
   tenant_id                  = var.tenant_id
