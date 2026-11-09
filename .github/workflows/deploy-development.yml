@@ -7,6 +7,9 @@ permissions:
   contents: read
   id-token: write
 
+env:
+  AZURE_MANAGED_IDENTITY_CLIENT_ID: 9724b573-ba41-4fc3-86ee-db1f6a892d69
+
 concurrency:
   group: development
   cancel-in-progress: false
@@ -19,7 +22,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: azure/login@v2
         with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          client-id: ${{ env.AZURE_MANAGED_IDENTITY_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
@@ -38,6 +41,9 @@ jobs:
           TF_VAR_entra_api_client_id: ${{ vars.ENTRA_API_CLIENT_ID }}
           TF_VAR_entra_spa_client_id: ${{ vars.ENTRA_SPA_CLIENT_ID }}
           TF_VAR_postgres_admin_password: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
+          TF_VAR_application_gateway_enabled: ${{ vars.APPLICATION_GATEWAY_ENABLED || 'false' }}
+          TF_VAR_application_gateway_host_name: ${{ vars.APPLICATION_GATEWAY_HOST_NAME }}
+          TF_VAR_application_gateway_certificate_secret_id: ${{ secrets.APPLICATION_GATEWAY_CERTIFICATE_SECRET_ID }}
         run: terraform apply -auto-approve
 
       - uses: actions/setup-python@v5

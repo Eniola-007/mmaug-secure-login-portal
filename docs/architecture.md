@@ -20,6 +20,7 @@ Authentication and authorization remain separate:
 ```mermaid
 flowchart LR
     U[Microsoft work, school, guest,<br/>or personal account]
+    WAF[Azure Application Gateway<br/>WAF_v2 + HTTPS]
     SPA[React SPA<br/>authorization code + PKCE]
     IDP[Microsoft identity platform<br/>common authority]
     API[FastAPI protected API]
@@ -27,10 +28,12 @@ flowchart LR
     KV[Azure Key Vault]
     MON[Application Insights]
 
-    U --> SPA
+    U --> WAF
+    WAF -->|default route| SPA
+    WAF -->|/api/*| API
     SPA --> IDP
     IDP -->|v2 access token| SPA
-    SPA -->|Bearer token: access_as_user| API
+    SPA -->|Bearer token: access_as_user through WAF| API
     API -->|enrollment and role check| DB
     API -->|managed identity| KV
     API --> MON
@@ -43,28 +46,38 @@ flowchart LR
 ```mermaid
 flowchart TB
     GH[GitHub Actions development environment]
-    DEPLOY[id-mmaug-github-deploy<br/>deployment UAMI]
+    ID[id-mmaug-secure-login-portal<br/>single approved UAMI]
     APIAPP[API application registration]
     APISP[API Enterprise Application]
     SPAAPP[SPA application registration]
     SPASP[SPA Enterprise Application]
     RG[rg_mmaug_high_school]
-    RUNTIME[id-mmaug-secure-login-portal<br/>runtime UAMI]
+    AGW[Application Gateway WAF_v2]
+    APPS[Linux App Service Plan<br/>frontend + API]
 
-    GH -->|OIDC federation; no client secret| DEPLOY
-    DEPLOY -->|Microsoft Graph bootstrap| APIAPP
-    DEPLOY -->|Microsoft Graph bootstrap| SPAAPP
+    GH -->|exact environment OIDC subject;<br/>no client secret| ID
+    ID -->|temporary Microsoft Graph bootstrap| APIAPP
+    ID -->|temporary Microsoft Graph bootstrap| SPAAPP
     APIAPP --> APISP
     SPAAPP --> SPASP
-    DEPLOY -->|Azure Resource Manager| RG
-    RG --> RUNTIME
+    ID -->|Contributor via Azure Resource Manager| RG
+    ID -->|attached identity| AGW
+    ID -->|attached identity| APPS
+    RG --> AGW
+    RG --> APPS
 ```
 
 Creating an application registration creates an application definition. Creating its
 service principal creates the corresponding Enterprise Application in the home tenant.
-The deployment UAMI performs this bootstrap from GitHub OIDC. The runtime UAMI is never
-used for directory administration.
+Per the approved design, the same UAMI performs GitHub deployment, temporary directory
+bootstrap, Key Vault access, and workload identity. This is operationally simple but has
+a larger blast radius than separate deployment and runtime identities.
 
 After the final HTTPS redirect URI and consent are configured, remove broad Microsoft
-Graph bootstrap permissions from the deployment identity unless repeatable directory
+Graph bootstrap permissions from the identity unless repeatable directory
 provisioning is an approved operational requirement.
+
+Application Gateway is the public HTTPS endpoint. It redirects HTTP to HTTPS, applies
+the OWASP 3.2 managed rules in Prevention mode, sends `/api/*` to FastAPI, and sends all
+other paths to the React frontend. The gateway cannot be enabled until a real DNS host
+name and a Key Vault-backed TLS certificate are supplied.

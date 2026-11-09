@@ -67,6 +67,15 @@ resource "azurerm_subnet" "database" {
   }
 }
 
+resource "azurerm_subnet" "application_gateway" {
+  count = var.application_gateway_enabled ? 1 : 0
+
+  name                 = "snet-appgateway"
+  resource_group_name  = data.azurerm_resource_group.project.name
+  virtual_network_name = azurerm_virtual_network.portal.name
+  address_prefixes     = ["10.42.3.0/24"]
+}
+
 resource "azurerm_private_dns_zone" "postgres" {
   name                = "privatelink.postgres.database.azure.com"
   resource_group_name = data.azurerm_resource_group.project.name
@@ -217,7 +226,7 @@ resource "azurerm_linux_web_app" "api" {
     ENTRA_API_CLIENT_ID                        = var.entra_api_client_id
     ENTRA_REQUIRED_SCOPE                       = "access_as_user"
     ALLOW_DEV_AUTH                             = "false"
-    CORS_ORIGINS                               = "https://${azurerm_linux_web_app.frontend.default_hostname}"
+    CORS_ORIGINS                               = var.application_gateway_enabled ? "https://${var.application_gateway_host_name}" : "https://${azurerm_linux_web_app.frontend.default_hostname}"
     APPLICATIONINSIGHTS_CONNECTION_STRING      = azurerm_application_insights.portal.connection_string
     ApplicationInsightsAgent_EXTENSION_VERSION = "~3"
     SCM_DO_BUILD_DURING_DEPLOYMENT             = "true"

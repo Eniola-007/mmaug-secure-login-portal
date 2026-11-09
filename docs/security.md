@@ -17,14 +17,13 @@
 
 ## Managed identities
 
-`id-mmaug-secure-login-portal` is the runtime identity. It is attached only to the
-backend and receives narrowly scoped data-plane roles such as Key Vault Secrets User.
-
-`id-mmaug-github-deploy` is reserved for deployment. Its GitHub federated credential
-must trust an exact repository and GitHub environment subject. It must not be attached
-to the running application. Temporary Microsoft Graph bootstrap permission may create
-the two application registrations, Enterprise Applications, and delegated permission
-grant. Review or remove that directory permission after bootstrap.
+`id-mmaug-secure-login-portal` is the only approved managed identity. Its GitHub
+federated credential trusts the exact repository and `development` environment subject.
+It is used for deployment and is attached to the API and Application Gateway. Temporary
+Microsoft Graph bootstrap permission may create the two application registrations,
+Enterprise Applications, and delegated permission grant. Review or remove that Graph
+permission after bootstrap. Because deployment and runtime duties share one identity,
+protect the GitHub environment with branch restrictions and required reviewers.
 
 ## Threats and controls
 
@@ -38,6 +37,8 @@ grant. Review or remove that directory permission after bootstrap.
 | Secret leakage | Key Vault references and secret scanning | Terraform and CI |
 | Agent prompt injection | No privileged tools; backend role selection | Agent isolation test plan |
 | Direct database access | Private VNet address and no public endpoint | Terraform plan |
+| Web exploits and malicious request bodies | Application Gateway WAF_v2, OWASP 3.2 Prevention mode | WAF policy and logs |
+| Clear-text public traffic | HTTP-to-HTTPS redirect and Key Vault-backed certificate | Gateway listener configuration |
 
 ## Production readiness gates
 

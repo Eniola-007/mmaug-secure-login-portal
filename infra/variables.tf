@@ -65,6 +65,25 @@ variable "app_service_sku" {
   default     = "B1"
 }
 
+variable "application_gateway_enabled" {
+  description = "Create the approved WAF_v2 Application Gateway after DNS and TLS inputs are available."
+  type        = bool
+  default     = false
+}
+
+variable "application_gateway_host_name" {
+  description = "Public DNS host name used by the HTTPS Application Gateway listener."
+  type        = string
+  default     = ""
+}
+
+variable "application_gateway_certificate_secret_id" {
+  description = "Versionless Key Vault secret ID for the Application Gateway TLS certificate."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
 variable "postgres_sku" {
   description = "PostgreSQL Flexible Server SKU. Burstable is for development only."
   type        = string

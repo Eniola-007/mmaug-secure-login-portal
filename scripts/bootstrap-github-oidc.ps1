@@ -4,20 +4,18 @@ param(
     [Parameter(Mandatory)] [string] $GitHubRepository,
     [ValidateSet('development', 'uat', 'production')] [string] $Environment = 'development',
     [string] $ResourceGroup = 'rg_mmaug_high_school',
-    [string] $Location = 'northeurope',
-    [string] $IdentityName = 'id-mmaug-github-deploy'
+    [string] $IdentityName = 'id-mmaug-secure-login-portal'
 )
 
 $ErrorActionPreference = 'Stop'
 $subject = "repo:$GitHubOwner/$GitHubRepository`:environment:$Environment"
 $credentialName = "github-$Environment"
 
-if ($PSCmdlet.ShouldProcess($IdentityName, 'Create deployment identity if absent')) {
-    $identity = az identity show --resource-group $ResourceGroup --name $IdentityName --output json 2>$null | ConvertFrom-Json
-    if (-not $identity) {
-        $identity = az identity create --resource-group $ResourceGroup --name $IdentityName --location $Location --output json | ConvertFrom-Json
-    }
+$identityJson = az identity show --resource-group $ResourceGroup --name $IdentityName --output json 2>$null
+if (-not $identityJson) {
+    throw "Approved managed identity '$IdentityName' was not found in '$ResourceGroup'. This script will not create a second identity."
 }
+$identity = $identityJson | ConvertFrom-Json
 
 if ($PSCmdlet.ShouldProcess($credentialName, "Trust GitHub subject $subject")) {
     $existing = az identity federated-credential show --resource-group $ResourceGroup --identity-name $IdentityName --name $credentialName --output json 2>$null

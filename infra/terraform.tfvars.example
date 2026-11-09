@@ -7,4 +7,9 @@ runtime_identity_name  = "id-mmaug-secure-login-portal"
 entra_api_client_id    = "replace-after-app-registration"
 entra_spa_client_id    = "replace-after-app-registration"
 
+# Enable only after DNS and a Key Vault-backed production certificate are ready.
+application_gateway_enabled               = false
+application_gateway_host_name             = "portal.example.edu"
+application_gateway_certificate_secret_id = "https://replace-me.vault.azure.net/secrets/portal-tls"
+
 # Supply TF_VAR_postgres_admin_password from a protected environment secret.

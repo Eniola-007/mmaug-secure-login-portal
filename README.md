@@ -7,7 +7,8 @@ Production-oriented MVP for RFP `MMAUG-AIDB-RFP-002`.
 - React + TypeScript frontend with Microsoft work, school, guest, and personal account sign-in
 - FastAPI protected API with server-side role and account-status checks
 - PostgreSQL application profiles and append-only audit events
-- Azure App Service, Key Vault, Application Insights, and managed identity
+- Azure App Service Plan, Application Gateway WAF_v2, Key Vault, Application Insights,
+  and one approved user-assigned managed identity
 - Terraform infrastructure and GitHub Actions deployment through OIDC
 
 Authentication uses the Microsoft identity platform `common` authority. Authentication
