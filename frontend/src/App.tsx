@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useMsal } from "@azure/msal-react";
 import { apiRequest, publicApiRequest } from "./api";
 import { authConfigured, devAuthEnabled, loginRequest } from "./auth";
@@ -37,7 +37,7 @@ const roleExperience: Record<Role, {
 };
 
 type View = "dashboard" | "assistant" | "people" | "audit";
-type AuthMode = "signin" | "signup";
+type AuthMode = "signin" | "signup" | "forgot" | "reset";
 interface TokenResponse { access_token: string; token_type: string; expires_in: number }
 interface RegistrationResponse { status: string; message: string }
 
@@ -61,10 +61,12 @@ function PortalIcon({ name }: { name: "home" | "spark" | "people" | "audit" | "b
   return <svg className="portal-icon" viewBox="0 0 24 24" aria-hidden="true">{paths[name]}</svg>;
 }
 
-function AuthDialog({ mode, onModeChange, onClose, onLocalLogin, onLocalRegister, onMicrosoft, authReady, busy, message, error }: {
+function AuthDialog({ mode, onModeChange, onClose, onLocalLogin, onLocalRegister, onForgotPassword, onResetPassword, onMicrosoft, authReady, busy, message, error }: {
   mode: AuthMode; onModeChange: (mode: AuthMode) => void; onClose: () => void;
   onLocalLogin: (email: string, password: string) => Promise<void>;
   onLocalRegister: (name: string, email: string, password: string) => Promise<void>;
+  onForgotPassword: (email: string) => Promise<void>;
+  onResetPassword: (password: string) => Promise<void>;
   onMicrosoft: () => void; authReady: boolean; busy: boolean; message: string; error: string;
 }) {
   const [name, setName] = useState("");
@@ -73,28 +75,33 @@ function AuthDialog({ mode, onModeChange, onClose, onLocalLogin, onLocalRegister
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (mode === "signup") await onLocalRegister(name, email, password);
+    else if (mode === "forgot") await onForgotPassword(email);
+    else if (mode === "reset") await onResetPassword(password);
     else await onLocalLogin(email, password);
   }
+  const title = mode === "signup" ? "Create your account" : mode === "forgot" ? "Recover your account" : mode === "reset" ? "Choose a new password" : "Welcome back";
   return (
     <div className="dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
       <section className="auth-dialog" role="dialog" aria-modal="true" aria-labelledby="auth-title">
         <button className="dialog-close" type="button" onClick={onClose} aria-label="Close">×</button>
         <img src={mmaugLogo} alt="" className="dialog-logo" />
         <p className="eyebrow">MMAUG SECURE PORTAL</p>
-        <h2 id="auth-title">{mode === "signup" ? "Create your account" : "Welcome back"}</h2>
-        <p className="dialog-intro">{mode === "signup" ? "Use Microsoft or create an account with your email. Your school role is approved separately." : "Continue with Microsoft or sign in with an approved portal account."}</p>
-        <div className="auth-tabs" role="tablist" aria-label="Account action"><button type="button" role="tab" aria-selected={mode === "signin"} className={mode === "signin" ? "active" : ""} onClick={() => onModeChange("signin")}>Sign in</button><button type="button" role="tab" aria-selected={mode === "signup"} className={mode === "signup" ? "active" : ""} onClick={() => onModeChange("signup")}>Sign up</button></div>
+        <h2 id="auth-title">{title}</h2>
+        <p className="dialog-intro">{mode === "signup" ? "Use Microsoft or create an account with your email. Verify your email before a school administrator approves your role." : mode === "forgot" ? "Enter the email for your local portal account. We will send a short-lived recovery link if it is eligible." : mode === "reset" ? "Use at least 12 characters. Resetting your password signs out existing local sessions." : "Continue with Microsoft or sign in with an approved, verified portal account."}</p>
+        {(mode === "signin" || mode === "signup") && <><div className="auth-tabs" role="tablist" aria-label="Account action"><button type="button" role="tab" aria-selected={mode === "signin"} className={mode === "signin" ? "active" : ""} onClick={() => onModeChange("signin")}>Sign in</button><button type="button" role="tab" aria-selected={mode === "signup"} className={mode === "signup" ? "active" : ""} onClick={() => onModeChange("signup")}>Sign up</button></div>
         <button className="microsoft-button" type="button" disabled={!authReady || busy} onClick={onMicrosoft}><MicrosoftMark /> {mode === "signup" ? "Sign up with Microsoft" : "Continue with Microsoft"}</button>
         {!authReady && <p className="auth-note">Microsoft sign-in will be enabled when the administrator completes the app registration.</p>}
-        <div className="or-divider"><span>or use email</span></div>
+        <div className="or-divider"><span>or use email</span></div></>}
         <form className="auth-form" onSubmit={(event) => void submit(event)}>
           {mode === "signup" && <label>Full name<input value={name} onChange={(event) => setName(event.target.value)} minLength={2} maxLength={160} autoComplete="name" required /></label>}
-          <label>Email address<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required /></label>
-          <label>Password<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} minLength={mode === "signup" ? 12 : 1} maxLength={128} autoComplete={mode === "signup" ? "new-password" : "current-password"} required /></label>
-          {mode === "signup" && <p className="password-hint">Use at least 12 characters. New accounts start pending; only a school administrator can activate or change a role.</p>}
+          {mode !== "reset" && <label>Email address<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required /></label>}
+          {mode !== "forgot" && <label>{mode === "reset" ? "New password" : "Password"}<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} minLength={mode === "signup" || mode === "reset" ? 12 : 1} maxLength={128} autoComplete={mode === "signup" || mode === "reset" ? "new-password" : "current-password"} required /></label>}
+          {mode === "signup" && <p className="password-hint">Use at least 12 characters. You must verify your email; only a school administrator can activate or change a role.</p>}
           {message && <div className="success-message" role="status">{message}</div>}
           {error && <div className="form-error" role="alert">{error}</div>}
-          <button className="primary full" type="submit" disabled={busy}>{busy ? "Please wait…" : mode === "signup" ? "Request my account" : "Sign in securely"}</button>
+          <button className="primary full" type="submit" disabled={busy}>{busy ? "Please wait…" : mode === "signup" ? "Request my account" : mode === "forgot" ? "Send recovery link" : mode === "reset" ? "Reset password" : "Sign in securely"}</button>
+          {mode === "signin" && <button className="text-action" type="button" onClick={() => onModeChange("forgot")}>Forgot your local password?</button>}
+          {(mode === "forgot" || mode === "reset") && <button className="text-action" type="button" onClick={() => onModeChange("signin")}>Back to sign in</button>}
         </form>
       </section>
     </div>
@@ -152,6 +159,8 @@ export default function App() {
   const [authMessage, setAuthMessage] = useState("");
   const [authError, setAuthError] = useState("");
   const [accessMessage, setAccessMessage] = useState("");
+  const [resetToken, setResetToken] = useState("");
+  const recoveryHandled = useRef(false);
 
   const callApi = useCallback(<T,>(path: string, init?: RequestInit) => apiRequest<T>(path, account, devUser, localToken, init), [account, devUser, localToken]);
   const loadPortal = useCallback(async () => {
@@ -165,6 +174,30 @@ export default function App() {
   }, [account, callApi, devUser, localToken]);
 
   useEffect(() => { const timer = window.setTimeout(() => void loadPortal(), 0); return () => window.clearTimeout(timer); }, [loadPortal]);
+  useEffect(() => {
+    if (recoveryHandled.current) return;
+    recoveryHandled.current = true;
+    let timer = 0;
+    const parameters = new URLSearchParams(window.location.search);
+    const verificationToken = parameters.get("verify_email");
+    const passwordToken = parameters.get("reset_password");
+    if (verificationToken) {
+      parameters.delete("verify_email");
+      window.history.replaceState({}, "", `${window.location.pathname}${parameters.size ? `?${parameters}` : ""}${window.location.hash}`);
+      timer = window.setTimeout(() => {
+        setAuthMode("signin"); setAuthBusy(true); setAuthError("");
+        void publicApiRequest<RegistrationResponse>("/api/auth/verify-email", { method: "POST", body: JSON.stringify({ token: verificationToken }) })
+          .then((response) => setAuthMessage(response.message))
+          .catch((caught: unknown) => setAuthError(caught instanceof Error ? caught.message : "Email verification failed"))
+          .finally(() => setAuthBusy(false));
+      }, 0);
+    } else if (passwordToken) {
+      parameters.delete("reset_password");
+      window.history.replaceState({}, "", `${window.location.pathname}${parameters.size ? `?${parameters}` : ""}${window.location.hash}`);
+      timer = window.setTimeout(() => { setResetToken(passwordToken); setAuthMode("reset"); }, 0);
+    }
+    return () => window.clearTimeout(timer);
+  }, []);
   function openAuth(mode: AuthMode) { setAuthMode(mode); setAuthMessage(""); setAuthError(""); }
 
   async function localLogin(email: string, password: string) {
@@ -182,6 +215,24 @@ export default function App() {
       const response = await publicApiRequest<RegistrationResponse>("/api/auth/register", { method: "POST", body: JSON.stringify({ display_name: name, email, password }) });
       setAuthMessage(response.message);
     } catch (caught) { setAuthError(caught instanceof Error ? caught.message : "Registration failed"); }
+    finally { setAuthBusy(false); }
+  }
+
+  async function forgotPassword(email: string) {
+    setAuthBusy(true); setAuthError(""); setAuthMessage("");
+    try {
+      const response = await publicApiRequest<RegistrationResponse>("/api/auth/forgot-password", { method: "POST", body: JSON.stringify({ email }) });
+      setAuthMessage(response.message);
+    } catch (caught) { setAuthError(caught instanceof Error ? caught.message : "Recovery request failed"); }
+    finally { setAuthBusy(false); }
+  }
+
+  async function resetPassword(password: string) {
+    setAuthBusy(true); setAuthError(""); setAuthMessage("");
+    try {
+      const response = await publicApiRequest<RegistrationResponse>("/api/auth/reset-password", { method: "POST", body: JSON.stringify({ token: resetToken, password }) });
+      setResetToken(""); setAuthMode("signin"); setAuthMessage(response.message);
+    } catch (caught) { setAuthError(caught instanceof Error ? caught.message : "Password reset failed"); }
     finally { setAuthBusy(false); }
   }
 
@@ -218,7 +269,7 @@ export default function App() {
   const experience = useMemo(() => currentUser ? roleExperience[currentUser.role] : null, [currentUser]);
 
   if (!currentUser) {
-    return <><PublicLanding openAuth={openAuth} onMicrosoftRegistration={() => void requestMicrosoftRegistration()} onMicrosoftSignout={() => void instance.logoutRedirect()} microsoftEmail={account?.username ?? ""} accessError={error} accessMessage={accessMessage} loading={loading} />{authMode && <AuthDialog key={authMode} mode={authMode} onModeChange={(mode) => { setAuthMode(mode); setAuthError(""); setAuthMessage(""); }} onClose={() => setAuthMode(null)} onLocalLogin={localLogin} onLocalRegister={localRegister} onMicrosoft={() => void instance.loginRedirect({ ...loginRequest, prompt: "select_account" })} authReady={authConfigured} busy={authBusy} message={authMessage} error={authError} />}</>;
+    return <><PublicLanding openAuth={openAuth} onMicrosoftRegistration={() => void requestMicrosoftRegistration()} onMicrosoftSignout={() => void instance.logoutRedirect()} microsoftEmail={account?.username ?? ""} accessError={error} accessMessage={accessMessage} loading={loading} />{authMode && <AuthDialog key={authMode} mode={authMode} onModeChange={(mode) => { setAuthMode(mode); setAuthError(""); setAuthMessage(""); }} onClose={() => setAuthMode(null)} onLocalLogin={localLogin} onLocalRegister={localRegister} onForgotPassword={forgotPassword} onResetPassword={resetPassword} onMicrosoft={() => void instance.loginRedirect({ ...loginRequest, prompt: "select_account" })} authReady={authConfigured} busy={authBusy} message={authMessage} error={authError} />}</>;
   }
 
   return (
@@ -229,7 +280,7 @@ export default function App() {
         {devAuthEnabled && <div className="dev-banner">Development authentication is active. Never enable this setting in UAT or production.</div>}{error && <div className="error-banner" role="alert">{error}</div>}{loading && <div className="loading">Checking your access…</div>}
         {!loading && view === "dashboard" && dashboard && experience && <section className="dashboard-page"><div className="dashboard-hero"><div className="dashboard-hero-copy"><span className={`role-pill ${currentUser.role}`}>{currentUser.role}</span><h1>{experience.greeting}</h1><p>{experience.focus}</p><button onClick={() => void openView("assistant")}>Ask your assistant <ArrowIcon /></button></div><div className="dashboard-seal"><div><img src={mmaugLogo} alt="" /><span>SECURE<br />PORTAL</span></div></div></div><div className="metric-grid">{experience.metrics.map((metric) => <article key={metric.label}><strong>{metric.value}</strong><span>{metric.label}</span></article>)}</div><div className="dashboard-columns"><section className="workspace-section"><div className="section-title"><div><p className="eyebrow">YOUR WORKSPACE</p><h2>{dashboard.title}</h2></div><span>Assigned from PostgreSQL</span></div><div className="action-grid">{dashboard.actions.map((action, index) => <article key={action.title}><span className="action-index">0{index + 1}</span><div className="action-icon"><PortalIcon name={index === 0 ? "people" : index === 1 ? "home" : "bell"} /></div><h3>{action.title}</h3><p>{action.description}</p><button aria-label={`Open ${action.title}`}><ArrowIcon /></button></article>)}</div></section><aside className="today-panel"><div className="section-title"><div><p className="eyebrow">A GOOD PLACE TO START</p><h2>Today</h2></div><span className="today-date">{new Date().getDate()}</span></div><div className="agenda-list">{experience.agenda.map((item) => <article key={item.title}><span>{item.time}</span><div><strong>{item.title}</strong><small>{item.meta}</small></div></article>)}</div></aside></div><section className="assistant-banner"><div className="assistant-avatar"><PortalIcon name="spark" /></div><div><p className="eyebrow light">MMAUG ASSISTANT</p><h2>What would you like help with?</h2><p>I use approved guidance for your {currentUser.role} role and stay inside the school’s guardrails.</p></div><div className="assistant-suggestions">{dashboard.suggested_questions.map((question) => <button key={question} onClick={() => askSuggested(question)}>{question}<ArrowIcon /></button>)}</div></section></section>}
         {view === "assistant" && <section className="panel assistant-panel"><div className="assistant-heading"><span><PortalIcon name="spark" /></span><div><p className="eyebrow">{currentUser.role.toUpperCase()} ASSISTANT</p><h1>Welcome. How can I help?</h1></div></div><p className="muted">I answer from approved MMAUG guidance for your database-assigned role. Do not enter passwords, access tokens, or personal information.</p><form className="assistant-form" onSubmit={(event) => void askAgent(event)}><textarea value={agentMessage} onChange={(event) => setAgentMessage(event.target.value)} maxLength={2000} required placeholder="Ask about approved school resources…" /><div><small>School guidance only · Human review for important decisions</small><button className="primary" type="submit">Send securely <ArrowIcon /></button></div></form>{agentReply && <div className="agent-reply">{agentReply}</div>}</section>}
-        {currentUser.role === "admin" && view === "people" && <section className="panel"><div className="section-heading"><div><p className="eyebrow">ADMINISTRATION</p><h1>People & access</h1><p>Approve registrations and assign the only role the API will trust.</p></div><span>{users.length} accounts</span></div><div className="table-wrap"><table><thead><tr><th>Person</th><th>Database role</th><th>Access</th><th>Controls</th></tr></thead><tbody>{users.map((user) => <tr key={user.id}><td><strong>{user.display_name}</strong><small>{user.email}</small></td><td><span className={`role-pill ${user.role}`}>{user.role}</span></td><td><span className={`access-status ${user.is_active ? "approved" : "pending"}`}>{user.is_active ? "Approved" : "Pending / inactive"}</span></td><td className="controls"><select aria-label={`Role for ${user.display_name}`} value={user.role} onChange={(event) => void updateUser(user, { role: event.target.value as Role })}><option value="student">Student</option><option value="teacher">Teacher</option><option value="admin">Administrator</option></select><button className="quiet" onClick={() => void updateUser(user, { is_active: !user.is_active })}>{user.is_active ? "Deactivate" : "Approve & activate"}</button></td></tr>)}</tbody></table></div></section>}
+        {currentUser.role === "admin" && view === "people" && <section className="panel"><div className="section-heading"><div><p className="eyebrow">ADMINISTRATION</p><h1>People & access</h1><p>Approve verified registrations and assign the only role the API will trust.</p></div><span>{users.length} accounts</span></div><div className="table-wrap"><table><thead><tr><th>Person</th><th>Database role</th><th>Identity</th><th>Access</th><th>Controls</th></tr></thead><tbody>{users.map((user) => { const emailReady = user.identity_provider === "microsoft" || Boolean(user.email_verified_at); return <tr key={user.id}><td><strong>{user.display_name}</strong><small>{user.email}</small></td><td><span className={`role-pill ${user.role}`}>{user.role}</span></td><td><span className={`access-status ${emailReady ? "approved" : "pending"}`}>{user.identity_provider === "microsoft" ? "Microsoft verified" : emailReady ? "Email verified" : "Email not verified"}</span></td><td><span className={`access-status ${user.is_active ? "approved" : "pending"}`}>{user.is_active ? "Approved" : "Pending / inactive"}</span></td><td className="controls"><select aria-label={`Role for ${user.display_name}`} value={user.role} onChange={(event) => void updateUser(user, { role: event.target.value as Role })}><option value="student">Student</option><option value="teacher">Teacher</option><option value="admin">Administrator</option></select><button className="quiet" disabled={!user.is_active && !emailReady} title={!emailReady ? "Email verification is required first" : ""} onClick={() => void updateUser(user, { is_active: !user.is_active })}>{user.is_active ? "Deactivate" : "Approve & activate"}</button></td></tr>; })}</tbody></table></div></section>}
         {currentUser.role === "admin" && view === "audit" && <section className="panel"><div className="section-heading"><div><p className="eyebrow">SECURITY</p><h1>Audit activity</h1><p>Registration requests and access changes are recorded here.</p></div><span>Latest {events.length}</span></div><div className="event-list">{events.map((event) => <article key={event.id}><span className={`outcome ${event.outcome}`} /><div><strong>{event.action.replaceAll(".", " ")}</strong><p>{new Date(event.occurred_at).toLocaleString()} · {event.target_type ?? "portal"}</p></div></article>)}</div></section>}
       </main>
     </div>

@@ -50,6 +50,15 @@ def update_user(
             status_code=status.HTTP_409_CONFLICT,
             detail="Administrators cannot deactivate their own portal access",
         )
+    if (
+        update.is_active is True
+        and target.local_credential is not None
+        and target.email_verified_at is None
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This local account must verify its email before activation",
+        )
     before = {"role": target.role.value, "is_active": target.is_active}
     if update.role is not None:
         target.role = update.role

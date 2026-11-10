@@ -34,6 +34,18 @@ output "knowledge_base_container_name" {
   value = azurerm_storage_container.knowledge_base.name
 }
 
+output "email_sender_address" {
+  value = "donotreply@${azurerm_email_communication_service_domain.portal.from_sender_domain}"
+}
+
+output "foundry_project_endpoint" {
+  value = local.foundry_project_endpoint
+}
+
+output "foundry_model_deployment_name" {
+  value = azurerm_cognitive_deployment.gpt_5_4_mini.name
+}
+
 output "application_gateway_public_ip" {
   value = data.azurerm_public_ip.application_gateway.ip_address
 }

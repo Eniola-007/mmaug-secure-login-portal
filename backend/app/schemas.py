@@ -14,6 +14,8 @@ class UserRead(BaseModel):
     display_name: str
     role: Role
     is_active: bool
+    email_verified_at: datetime | None
+    identity_provider: str
     created_at: datetime
 
 
@@ -33,6 +35,18 @@ class LocalRegistrationRequest(BaseModel):
 class LocalLoginRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=1, max_length=128)
+
+
+class EmailRequest(BaseModel):
+    email: EmailStr
+
+
+class TokenRequest(BaseModel):
+    token: str = Field(min_length=32, max_length=256)
+
+
+class PasswordResetRequest(TokenRequest):
+    password: str = Field(min_length=12, max_length=128)
 
 
 class RegistrationRead(BaseModel):

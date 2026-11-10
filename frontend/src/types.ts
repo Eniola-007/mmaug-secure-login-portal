@@ -6,6 +6,8 @@ export interface PortalUser {
   display_name: string;
   role: Role;
   is_active: boolean;
+  email_verified_at: string | null;
+  identity_provider: "local" | "microsoft";
   created_at: string;
 }
 

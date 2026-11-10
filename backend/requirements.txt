@@ -11,3 +11,4 @@ argon2-cffi>=23.1,<26
 azure-identity>=1.19,<2
 azure-ai-projects>=2,<3
 azure-keyvault-secrets>=4.9,<5
+azure-communication-email>=1.0,<2

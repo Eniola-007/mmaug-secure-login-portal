@@ -16,6 +16,7 @@ from app.schemas import AgentRequest, AgentResponse
 
 router = APIRouter(prefix="/agent", tags=["agents"])
 
+
 def _ask_foundry(project_endpoint: str, agent_name: str, user: User, question: str) -> str:
     from azure.ai.projects import AIProjectClient
     from azure.identity import ClientSecretCredential, DefaultAzureCredential

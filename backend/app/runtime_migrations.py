@@ -45,9 +45,7 @@ def _upgrade_database() -> None:
             logger.info("Database migration completed successfully")
             return
         except Exception as exc:  # pragma: no cover - exercised against Azure PostgreSQL
-            logger.warning(
-                "Database migration attempt %s failed (%s)", attempt, type(exc).__name__
-            )
+            logger.warning("Database migration attempt %s failed (%s)", attempt, type(exc).__name__)
             if attempt < 5:
                 time.sleep(min(10 * (2 ** (attempt - 1)), 60))
 

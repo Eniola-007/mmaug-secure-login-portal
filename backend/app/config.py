@@ -21,6 +21,12 @@ class Settings(BaseSettings):
     password_reset_url: str = "https://passwordreset.microsoftonline.com/"  # noqa: S105
     local_auth_jwt_secret: SecretStr = SecretStr("")
     local_auth_token_minutes: int = 60
+    public_frontend_url: str = "http://localhost:5173"
+    email_delivery_enabled: bool = False
+    acs_email_endpoint: str = ""
+    acs_email_sender: str = ""
+    email_verification_minutes: int = 60
+    password_reset_minutes: int = 30
     applicationinsights_connection_string: str = ""
     azure_client_id: str = ""
     azure_ad_client_id: str = ""

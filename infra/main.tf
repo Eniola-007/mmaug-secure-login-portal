@@ -62,6 +62,32 @@ resource "azurerm_storage_container" "knowledge_base" {
   container_access_type = "private"
 }
 
+resource "azurerm_communication_service" "portal" {
+  name                = "acs-${local.prefix}-${local.suffix}"
+  resource_group_name = data.azurerm_resource_group.project.name
+  data_location       = "Europe"
+  tags                = local.common_tags
+}
+
+resource "azurerm_email_communication_service" "portal" {
+  name                = "email-${local.prefix}-${local.suffix}"
+  resource_group_name = data.azurerm_resource_group.project.name
+  data_location       = "Europe"
+  tags                = local.common_tags
+}
+
+resource "azurerm_email_communication_service_domain" "portal" {
+  name              = "AzureManagedDomain"
+  email_service_id  = azurerm_email_communication_service.portal.id
+  domain_management = "AzureManaged"
+  tags              = local.common_tags
+}
+
+resource "azurerm_communication_service_email_domain_association" "portal" {
+  communication_service_id = azurerm_communication_service.portal.id
+  email_service_domain_id  = azurerm_email_communication_service_domain.portal.id
+}
+
 resource "azurerm_virtual_network" "portal" {
   name                = "vnet-${local.prefix}-${local.suffix}"
   address_space       = ["10.42.0.0/16"]
@@ -283,15 +309,21 @@ resource "azurerm_linux_web_app" "api" {
   }
 
   app_settings = merge({
-    ENVIRONMENT              = var.environment
-    DATABASE_URL             = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.database_url.versionless_id})"
-    ENTRA_TENANT_ID          = var.tenant_id
-    ENTRA_AUTHORITY_TENANT   = "common"
-    ENTRA_API_CLIENT_ID      = var.entra_api_client_id
-    ENTRA_REQUIRED_SCOPE     = "access_as_user"
-    ALLOW_DEV_AUTH           = "false"
-    LOCAL_AUTH_JWT_SECRET    = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.local_auth_jwt.versionless_id})"
-    LOCAL_AUTH_TOKEN_MINUTES = "60"
+    ENVIRONMENT                = var.environment
+    DATABASE_URL               = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.database_url.versionless_id})"
+    ENTRA_TENANT_ID            = var.tenant_id
+    ENTRA_AUTHORITY_TENANT     = "common"
+    ENTRA_API_CLIENT_ID        = var.entra_api_client_id
+    ENTRA_REQUIRED_SCOPE       = "access_as_user"
+    ALLOW_DEV_AUTH             = "false"
+    LOCAL_AUTH_JWT_SECRET      = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.local_auth_jwt.versionless_id})"
+    LOCAL_AUTH_TOKEN_MINUTES   = "60"
+    PUBLIC_FRONTEND_URL        = var.application_gateway_enabled ? "https://${local.application_gateway_hostname}" : "https://${azurerm_linux_web_app.frontend.default_hostname}"
+    EMAIL_DELIVERY_ENABLED     = "true"
+    ACS_EMAIL_ENDPOINT         = "https://${azurerm_communication_service.portal.hostname}"
+    ACS_EMAIL_SENDER           = "donotreply@${azurerm_email_communication_service_domain.portal.from_sender_domain}"
+    EMAIL_VERIFICATION_MINUTES = "60"
+    PASSWORD_RESET_MINUTES     = "30"
     CORS_ORIGINS = jsonencode([
       var.application_gateway_enabled ? "https://${local.application_gateway_hostname}" : "https://${azurerm_linux_web_app.frontend.default_hostname}"
     ])
@@ -300,11 +332,11 @@ resource "azurerm_linux_web_app" "api" {
     AZURE_CLIENT_ID                            = data.azurerm_user_assigned_identity.runtime.client_id
     AZURE_AD_CLIENT_ID                         = var.azure_ad_client_id
     AZURE_AD_TENANT_ID                         = var.azure_ad_tenant_id
-    AZURE_AI_PROJECT_ENDPOINT                  = var.azure_ai_project_endpoint
+    AZURE_AI_PROJECT_ENDPOINT                  = trimspace(var.azure_ai_project_endpoint) != "" ? var.azure_ai_project_endpoint : local.foundry_project_endpoint
     AZURE_AI_MODEL_DEPLOYMENT_NAME             = var.azure_ai_model_deployment_name
-    AZURE_AI_STUDENT_AGENT_ID                  = var.azure_ai_student_agent_id
-    AZURE_AI_TEACHER_AGENT_ID                  = var.azure_ai_teacher_agent_id
-    AZURE_AI_ADMIN_AGENT_ID                    = var.azure_ai_admin_agent_id
+    AZURE_AI_STUDENT_AGENT_ID                  = local.foundry_student_agent
+    AZURE_AI_TEACHER_AGENT_ID                  = local.foundry_teacher_agent
+    AZURE_AI_ADMIN_AGENT_ID                    = local.foundry_admin_agent
     KNOWLEDGE_BASE_STORAGE_URL                 = azurerm_storage_account.knowledge_base.primary_blob_endpoint
     KNOWLEDGE_BASE_CONTAINER                   = azurerm_storage_container.knowledge_base.name
     SCM_DO_BUILD_DURING_DEPLOYMENT             = "false"

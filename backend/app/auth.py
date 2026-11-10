@@ -117,6 +117,7 @@ def create_local_access_token(user: User) -> tuple[str, int]:
             "iat": now,
             "exp": now + timedelta(seconds=expires_in),
             "token_kind": "local_access",
+            "auth_version": user.auth_version,
         },
         secret,
         algorithm="HS256",
@@ -124,7 +125,7 @@ def create_local_access_token(user: User) -> tuple[str, int]:
     return token, expires_in
 
 
-def _user_id_from_local_token(token: str) -> uuid.UUID:
+def _local_token_identity(token: str) -> tuple[uuid.UUID, int]:
     secret = get_settings().local_auth_jwt_secret.get_secret_value()
     if len(secret) < 32:
         raise HTTPException(
@@ -142,7 +143,7 @@ def _user_id_from_local_token(token: str) -> uuid.UUID:
         )
         if claims["token_kind"] != "local_access":  # noqa: S105 - JWT type, not a secret
             raise jwt.InvalidTokenError("Unexpected token kind")
-        return uuid.UUID(str(claims["sub"]))
+        return uuid.UUID(str(claims["sub"])), int(claims.get("auth_version", -1))
     except (jwt.PyJWTError, ValueError) as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -169,13 +170,14 @@ def get_current_user(
     lookup_value: str | None = None
     tenant_id: str | None = None
     local_user_id: uuid.UUID | None = None
+    local_auth_version: int | None = None
 
     if settings.allow_dev_auth and settings.environment in {"development", "test"} and x_dev_user:
         lookup_column = User.email
         lookup_value = x_dev_user.lower().strip()
     elif credentials and credentials.scheme.lower() == "bearer":
         if _is_local_token(credentials.credentials):
-            local_user_id = _user_id_from_local_token(credentials.credentials)
+            local_user_id, local_auth_version = _local_token_identity(credentials.credentials)
         else:
             claims = claims_from_entra_token(credentials.credentials)
             tenant_id = str(claims["tid"]).lower()
@@ -216,6 +218,12 @@ def get_current_user(
                 "tenant_id": tenant_id,
                 "object_id": lookup_value,
             },
+        )
+    if local_user_id is not None and user.auth_version != local_auth_version:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="This session is no longer valid",
+            headers={"WWW-Authenticate": "Bearer"},
         )
     if not user.is_active:
         raise HTTPException(

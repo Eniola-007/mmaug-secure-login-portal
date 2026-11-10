@@ -57,11 +57,11 @@ Save the returned identifiers as GitHub `development` variables:
 
 - `ENTRA_SPA_CLIENT_ID`
 - `ENTRA_API_CLIENT_ID`
-- `AZURE_AI_PROJECT_ENDPOINT` after the Foundry project exists
-- `AZURE_AI_MODEL_DEPLOYMENT_NAME` (`gpt-5.4-mini`)
-- `AZURE_AI_STUDENT_AGENT_ID`
-- `AZURE_AI_TEACHER_AGENT_ID`
-- `AZURE_AI_ADMIN_AGENT_ID`
+
+These IDs are identifiers, not credentials. Use **Repository → Settings → Environments →
+development → Environment variables**, not Environment secrets. Do not create a SPA
+client secret. The redirect URL is configured on the SPA registration in Entra, not in
+GitHub.
 
 Rerun `Deploy development`. The frontend is rebuilt with MSAL enabled and the API is
 configured to validate tokens for the registered API audience.
@@ -79,21 +79,33 @@ python -m app.enroll_users --file /tmp/mmaug-enrollment.json
 Use [enrollment.template.json](enrollment.template.json). Never include passwords or
 access tokens in the enrollment file.
 
+For local registrations, approval is in the authenticated portal: **Administrator
+dashboard → People & access**. A local user must complete the emailed ownership check
+before **Approve & activate** becomes available. The administrator chooses the PostgreSQL
+role there; a user cannot approve or promote their own registration.
+
 ## 5. Foundry knowledge and role agents
 
 The workflow creates a private `knowledge-base` Blob container and uploads the reviewed
 Markdown files from the repository. It obtains a storage key only for that upload, masks
 it immediately, and does not store it in GitHub or application settings.
 
-The Foundry administrator must then:
+Terraform creates the Foundry resource, `mmaug-school-portal` project, and the approved
+`gpt-5.4-mini` version `2026-03-17` deployment. The workflow then attempts to create three
+role-scoped prompt agents and separate file-search stores from the reviewed Markdown.
 
-1. deploy model `gpt-5.4-mini` version `2026-03-17` in a supported deployment type;
-2. create a file-search vector store from the approved knowledge files;
-3. create versioned prompt agents named for student, teacher, and administrator;
-4. grant `id-mmaug-secure-login-portal` **Foundry User** on the project;
-5. grant the identity the Storage data-plane role required by the selected Foundry setup;
-6. configure the five `AZURE_AI_*` environment variables above and redeploy; and
-7. verify grounded answers, role isolation, refusals, fallback, and audit metadata.
+The Foundry administrator must:
+
+1. open the Foundry project in the Azure portal and select **Access control (IAM)**;
+2. grant `id-mmaug-secure-login-portal` **Foundry User** on the project;
+3. grant the service principal represented by `AZURE_AD_CLIENT_ID` **Foundry User** on the
+   project so the workflow can create agent versions;
+4. grant the required Storage Blob data-plane role when using a standard/BYO setup;
+5. rerun **Deploy development**; and
+6. verify grounded answers, role isolation, refusals, fallback, and audit metadata.
+
+Creating those role assignments requires **Owner**, **User Access Administrator**, or an
+equivalent role-assignment permission. Resource-group Contributor alone cannot grant RBAC.
 
 Do not put a Foundry API key or application password in the repository. Microsoft Entra
 managed identity is the preferred runtime authentication mechanism.
@@ -110,11 +122,28 @@ field, and the API Web App receives `AZURE_AD_CLIENT_SECRET` only as a Key Vault
 Grant that service principal **Foundry User** and the required Blob data role. These
 credentials do not replace the managed identity used by GitHub OIDC to deploy Azure.
 
+## 6. Local-account email and recovery
+
+Terraform creates Azure Communication Services Email with an Azure-managed sender domain.
+The API authenticates to it with `id-mmaug-secure-login-portal`; no email connection string
+is stored in GitHub or sent to the browser.
+
+- Verification and password-reset tokens are random, single-use, short-lived, and stored
+  only as SHA-256 digests in PostgreSQL.
+- Password reset increments the account authentication version, revoking older local JWTs.
+- Registration, sign-in, verification, resend, and recovery limits persist in PostgreSQL
+  and return HTTP 429 with `Retry-After` when exceeded.
+- Recovery responses do not reveal whether an email is registered.
+
+Before real student data is accepted, verify outbound delivery and suppression behavior,
+complete a data-protection review, and replace the limited Azure-managed sender with a
+verified school domain if production volume or branding requires it.
+
 The API starts its idempotent Alembic migration in a background worker so App Service can
 answer platform warm-up probes immediately. `/health/ready` remains unavailable until the
 migration and a live PostgreSQL query both succeed.
 
-## 6. Application Gateway WAF_v2
+## 7. Application Gateway WAF_v2
 
 The final hostname is `mmaug-secure-portal.northeurope.cloudapp.azure.com`, reserved on
 Standard static Public IP `68.219.97.185`.
@@ -130,7 +159,7 @@ After obtaining a trusted certificate:
 The gateway redirects HTTP to HTTPS, applies OWASP 3.2 rules in Prevention mode, routes
 `/api/*` to FastAPI, and routes all other paths to React.
 
-## 7. Acceptance verification
+## 8. Acceptance verification
 
 1. `/health/ready` returns HTTP 200.
 2. The frontend URL returns HTTP 200 and displays the MMAUG-branded portal.
@@ -143,3 +172,5 @@ The gateway redirects HTTP to HTTPS, applies OWASP 3.2 rules in Prevention mode,
 9. The repository contains no Azure client secret or publish profile.
 10. The knowledge container is private and contains only reviewed files.
 11. Each role agent stays inside its server-selected boundary and refuses cross-user data.
+12. Local signup requires email verification before administrator activation.
+13. Password reset revokes an older local session and public auth endpoints rate-limit.
