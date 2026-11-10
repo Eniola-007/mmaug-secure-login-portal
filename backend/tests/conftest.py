@@ -10,6 +10,7 @@ from sqlalchemy.pool import StaticPool
 os.environ["ENVIRONMENT"] = "test"
 os.environ["DATABASE_URL"] = "sqlite://"
 os.environ["ALLOW_DEV_AUTH"] = "true"
+os.environ["LOCAL_AUTH_JWT_SECRET"] = "test-only-secret-that-is-longer-than-32-characters"
 
 from app.db import Base, get_db  # noqa: E402
 from app.main import app  # noqa: E402

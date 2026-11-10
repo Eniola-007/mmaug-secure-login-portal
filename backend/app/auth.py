@@ -1,7 +1,10 @@
 import uuid
 from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 
 import jwt
+from argon2 import PasswordHasher
+from argon2.exceptions import InvalidHashError, VerifyMismatchError
 from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import PyJWKClient
@@ -13,6 +16,10 @@ from app.db import get_db
 from app.models import Role, User
 
 bearer = HTTPBearer(auto_error=False)
+password_hasher = PasswordHasher(time_cost=3, memory_cost=65536, parallelism=4)
+LOCAL_ISSUER = "mmaug-local"
+LOCAL_AUDIENCE = "mmaug-api"
+_DUMMY_PASSWORD_HASH = password_hasher.hash("mmaug-login-timing-sentinel")
 
 
 def _tenant_id_from_claims(claims: dict) -> str:
@@ -40,7 +47,7 @@ def _validate_signing_key_issuer(signing_key: object, tenant_id: str) -> None:
         raise jwt.InvalidIssuerError("Signing key issuer does not match token tenant")
 
 
-def _claims_from_token(token: str) -> dict:
+def claims_from_entra_token(token: str) -> dict:
     settings = get_settings()
     if not settings.entra_api_client_id:
         raise HTTPException(
@@ -79,6 +86,79 @@ def _claims_from_token(token: str) -> dict:
     return claims
 
 
+def hash_password(password: str) -> str:
+    return password_hasher.hash(password)
+
+
+def verify_password(password_hash: str | None, password: str) -> bool:
+    candidate = password_hash or _DUMMY_PASSWORD_HASH
+    try:
+        valid = password_hasher.verify(candidate, password)
+    except (VerifyMismatchError, InvalidHashError):
+        return False
+    return bool(valid and password_hash)
+
+
+def create_local_access_token(user: User) -> tuple[str, int]:
+    settings = get_settings()
+    secret = settings.local_auth_jwt_secret.get_secret_value()
+    if len(secret) < 32:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Local account sign-in is not configured",
+        )
+    now = datetime.now(UTC)
+    expires_in = settings.local_auth_token_minutes * 60
+    token = jwt.encode(
+        {
+            "sub": str(user.id),
+            "iss": LOCAL_ISSUER,
+            "aud": LOCAL_AUDIENCE,
+            "iat": now,
+            "exp": now + timedelta(seconds=expires_in),
+            "token_kind": "local_access",
+        },
+        secret,
+        algorithm="HS256",
+    )
+    return token, expires_in
+
+
+def _user_id_from_local_token(token: str) -> uuid.UUID:
+    secret = get_settings().local_auth_jwt_secret.get_secret_value()
+    if len(secret) < 32:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Local account sign-in is not configured",
+        )
+    try:
+        claims = jwt.decode(
+            token,
+            secret,
+            algorithms=["HS256"],
+            audience=LOCAL_AUDIENCE,
+            issuer=LOCAL_ISSUER,
+            options={"require": ["sub", "exp", "iat", "iss", "aud", "token_kind"]},
+        )
+        if claims["token_kind"] != "local_access":  # noqa: S105 - JWT type, not a secret
+            raise jwt.InvalidTokenError("Unexpected token kind")
+        return uuid.UUID(str(claims["sub"]))
+    except (jwt.PyJWTError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired access token",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from exc
+
+
+def _is_local_token(token: str) -> bool:
+    try:
+        claims = jwt.decode(token, options={"verify_signature": False})
+    except jwt.PyJWTError:
+        return False
+    return claims.get("iss") == LOCAL_ISSUER
+
+
 def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
     x_dev_user: str | None = Header(default=None, alias="X-Dev-User"),
@@ -88,14 +168,18 @@ def get_current_user(
     lookup_column = User.entra_object_id
     lookup_value: str | None = None
     tenant_id: str | None = None
+    local_user_id: uuid.UUID | None = None
 
     if settings.allow_dev_auth and settings.environment in {"development", "test"} and x_dev_user:
         lookup_column = User.email
         lookup_value = x_dev_user.lower().strip()
     elif credentials and credentials.scheme.lower() == "bearer":
-        claims = _claims_from_token(credentials.credentials)
-        tenant_id = str(claims["tid"]).lower()
-        lookup_value = str(claims["oid"])
+        if _is_local_token(credentials.credentials):
+            local_user_id = _user_id_from_local_token(credentials.credentials)
+        else:
+            claims = claims_from_entra_token(credentials.credentials)
+            tenant_id = str(claims["tid"]).lower()
+            lookup_value = str(claims["oid"])
     else:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -103,7 +187,9 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    if lookup_column is User.entra_object_id:
+    if local_user_id is not None:
+        user = db.get(User, local_user_id)
+    elif lookup_column is User.entra_object_id:
         if tenant_id is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

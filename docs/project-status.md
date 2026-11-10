@@ -5,6 +5,10 @@
 - Target tenant, subscription, resource group, North Europe region, and the single
   approved user-assigned managed identity verified.
 - React/TypeScript portal and FastAPI API implemented with the supplied MMAUG seal.
+- Public presentation-led landing page, Microsoft/email account dialog, and polished
+  Student, Teacher, and Administrator dashboards implemented and responsively reviewed.
+- Local account registration and sign-in implemented with Argon2id, short-lived API
+  tokens, Key Vault signing material, pending approval, and audited database role control.
 - Sign-in architecture expanded to Microsoft work, school, guest, and personal accounts.
 - Multitenant token validation binds the `tid` claim to the v2 issuer and signing key.
 - Database identity changed from object ID alone to composite tenant ID plus object ID.
@@ -44,13 +48,14 @@
 
 ## Live completion gates
 
-1. Provide the deployed Web App URL to the Entra administrator, receive the created
+1. Deploy and verify the new public landing page and synthetic-data local account flow.
+2. Provide the deployed Web App URL to the Entra administrator, receive the created
    SPA/API client IDs, configure GitHub variables, and
    rerun deployment to activate MSAL.
-2. Obtain a trusted TLS certificate, enable Application Gateway WAF_v2, and add the final
+3. Obtain a trusted TLS certificate, enable Application Gateway WAF_v2, and add the final
    gateway URL to the SPA redirects.
-3. Enroll eight synthetic accounts with their real tenant and object IDs.
-4. Complete the sign-in, role-isolation, WAF, audit, recovery, and monitoring demonstration.
-5. Administrator creates the Foundry project/model deployment and three file-search
+4. Enroll eight synthetic accounts with their real tenant and object IDs.
+5. Complete the sign-in, role-isolation, WAF, audit, recovery, and monitoring demonstration.
+6. Administrator creates the Foundry project/model deployment and three file-search
    agents, then grants the managed identity **Foundry User** and the required Storage data
    role. Configure the project endpoint and role agent names to replace safe fallback.

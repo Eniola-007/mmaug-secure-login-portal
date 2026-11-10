@@ -25,6 +25,11 @@ resource "random_password" "postgres" {
   }
 }
 
+resource "random_password" "local_auth_jwt" {
+  length  = 64
+  special = false
+}
+
 locals {
   prefix = "mmaug-${var.environment}"
   suffix = random_string.suffix.result
@@ -213,6 +218,13 @@ resource "azurerm_key_vault_secret" "database_url" {
 
 }
 
+resource "azurerm_key_vault_secret" "local_auth_jwt" {
+  name             = "LOCAL-AUTH-JWT-SECRET"
+  value_wo         = random_password.local_auth_jwt.result
+  value_wo_version = 1
+  key_vault_id     = azurerm_key_vault.portal.id
+}
+
 resource "azurerm_key_vault_secret" "foundry_client_secret" {
   count = trimspace(var.azure_ad_client_id) != "" ? 1 : 0
 
@@ -271,13 +283,15 @@ resource "azurerm_linux_web_app" "api" {
   }
 
   app_settings = merge({
-    ENVIRONMENT            = var.environment
-    DATABASE_URL           = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.database_url.versionless_id})"
-    ENTRA_TENANT_ID        = var.tenant_id
-    ENTRA_AUTHORITY_TENANT = "common"
-    ENTRA_API_CLIENT_ID    = var.entra_api_client_id
-    ENTRA_REQUIRED_SCOPE   = "access_as_user"
-    ALLOW_DEV_AUTH         = "false"
+    ENVIRONMENT              = var.environment
+    DATABASE_URL             = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.database_url.versionless_id})"
+    ENTRA_TENANT_ID          = var.tenant_id
+    ENTRA_AUTHORITY_TENANT   = "common"
+    ENTRA_API_CLIENT_ID      = var.entra_api_client_id
+    ENTRA_REQUIRED_SCOPE     = "access_as_user"
+    ALLOW_DEV_AUTH           = "false"
+    LOCAL_AUTH_JWT_SECRET    = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.local_auth_jwt.versionless_id})"
+    LOCAL_AUTH_TOKEN_MINUTES = "60"
     CORS_ORIGINS = jsonencode([
       var.application_gateway_enabled ? "https://${local.application_gateway_hostname}" : "https://${azurerm_linux_web_app.frontend.default_hostname}"
     ])

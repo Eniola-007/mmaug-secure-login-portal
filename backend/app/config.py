@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     allow_dev_auth: bool = False
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173"])
     password_reset_url: str = "https://passwordreset.microsoftonline.com/"  # noqa: S105
+    local_auth_jwt_secret: SecretStr = SecretStr("")
+    local_auth_token_minutes: int = 60
     applicationinsights_connection_string: str = ""
     azure_client_id: str = ""
     azure_ad_client_id: str = ""
@@ -55,6 +57,11 @@ class Settings(BaseSettings):
             raise RuntimeError("ALLOW_DEV_AUTH must never be enabled in UAT or production")
         if self.environment in {"uat", "production"} and not self.entra_api_client_id:
             raise RuntimeError("ENTRA_API_CLIENT_ID is required in UAT and production")
+        if (
+            self.environment in {"uat", "production"}
+            and not self.local_auth_jwt_secret.get_secret_value()
+        ):
+            raise RuntimeError("LOCAL_AUTH_JWT_SECRET is required in UAT and production")
 
 
 @lru_cache

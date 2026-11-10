@@ -7,6 +7,7 @@ export async function apiRequest<T>(
   path: string,
   account: AccountInfo | null,
   devUser: string,
+  localToken: string,
   init?: RequestInit,
 ): Promise<T> {
   const headers = new Headers(init?.headers);
@@ -16,6 +17,8 @@ export async function apiRequest<T>(
   if (account) {
     const token = await msalInstance.acquireTokenSilent({ ...loginRequest, account });
     headers.set("Authorization", `Bearer ${token.accessToken}`);
+  } else if (localToken) {
+    headers.set("Authorization", `Bearer ${localToken}`);
   } else if (devUser) {
     headers.set("X-Dev-User", devUser);
   }
@@ -23,13 +26,16 @@ export async function apiRequest<T>(
   const response = await fetch(`${apiBase}${path}`, { ...init, headers });
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as {
-      detail?: string | {
+      detail?: string | Array<{ msg?: string }> | {
         message?: string;
         tenant_id?: string;
         object_id?: string;
       };
     } | null;
     if (body?.detail && typeof body.detail === "object") {
+      if (Array.isArray(body.detail)) {
+        throw new Error(body.detail.map((item) => item.msg).filter(Boolean).join(". ") || `Request failed (${response.status})`);
+      }
       const reference = body.detail.tenant_id && body.detail.object_id
         ? ` Enrollment reference: ${body.detail.tenant_id}:${body.detail.object_id}`
         : "";
@@ -40,4 +46,8 @@ export async function apiRequest<T>(
     );
   }
   return response.json() as Promise<T>;
+}
+
+export async function publicApiRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  return apiRequest<T>(path, null, "", "", init);
 }

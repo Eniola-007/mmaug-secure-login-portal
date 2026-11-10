@@ -5,11 +5,18 @@
 - The Microsoft identity platform performs authentication, MFA, recovery, and token issuance.
 - The `common` authority accepts Microsoft work, school, guest, and personal accounts.
 - The SPA requests an access token for the API using authorization code + PKCE.
+- People without Microsoft accounts may create a local portal account. Passwords are
+  hashed with Argon2id and are never returned or logged.
+- Local access tokens are short-lived, signed server-side with a random value held in Key
+  Vault, and stored only in browser session storage.
 - FastAPI validates signature, tenant-bound v2 issuer, signing-key issuer, audience,
   expiry, tenant ID, object ID, and `access_as_user` scope.
 - Tenant ID and object ID form the authorization lookup key because object IDs are only
   unique inside a tenant.
-- A successfully authenticated but unenrolled identity receives no portal data.
+- New Microsoft and local registrations receive no portal data until an administrator
+  verifies, assigns, and activates the PostgreSQL role.
+- Self-registration rejects role input and defaults to an inactive Student record, so a
+  visitor cannot self-assign Teacher or Administrator.
 - Portal role and active status are loaded server-side from PostgreSQL for every request.
 - Students and teachers can read only their own profile. Only administrators can list or change users.
 - Administrative changes are deterministic API operations and create an audit event.
@@ -39,7 +46,9 @@ required reviewers.
 | URL or client-side role tampering | Server-side RBAC dependencies | API authorization tests |
 | Cross-student disclosure | Object-level owner check | Negative access test |
 | Stolen deployment secret | GitHub OIDC; no Azure client secret | Workflow permissions and federation |
-| Credential stuffing | Entra MFA/Conditional Access and smart lockout | Tenant policy review |
+| Credential stuffing | Entra MFA/Conditional Access; WAF/rate limiting required before production local auth | Tenant and WAF review |
+| Password disclosure | Argon2id hashing; no plaintext storage or logging | Local-auth tests and database review |
+| Self-service privilege escalation | Registration rejects role; inactive Student default; admin-only activation | Negative registration test |
 | SQL injection | SQLAlchemy parameterization | Code review and tests |
 | Secret leakage | Key Vault references and secret scanning | Terraform and CI |
 | Agent prompt injection | No privileged tools; backend role selection | Agent isolation test plan |
@@ -54,3 +63,8 @@ required reviewers.
 Real student data is prohibited until privacy/DPIA, retention, backup restore,
 penetration testing, operational ownership, Conditional Access, and incident response
 are approved. Development uses synthetic records only.
+
+Local password reset, email ownership verification, durable distributed rate limiting,
+and administrator registration-review procedures are explicit production gates. Until
+those controls are approved, local accounts are suitable only for this synthetic-data
+development demonstration.

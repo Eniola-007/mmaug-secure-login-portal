@@ -4,7 +4,7 @@ Production-oriented MVP for RFP `MMAUG-AIDB-RFP-002`.
 
 ## Architecture
 
-- React + TypeScript frontend with Microsoft work, school, guest, and personal account sign-in
+- Public React + TypeScript landing page with Microsoft and email/password account paths
 - FastAPI protected API with server-side role and account-status checks
 - PostgreSQL application profiles and append-only audit events
 - Microsoft Foundry role assistants grounded in a curated Azure Blob knowledge base,
@@ -17,9 +17,11 @@ Deployment is infrastructure-first: the managed identity deploys the Web Apps an
 the frontend URL; the Entra administrator then creates the SPA/API registrations and
 configures MSAL without granting the deployment identity Microsoft Graph permissions.
 
-Authentication uses the Microsoft identity platform `common` authority. Authentication
-does not grant portal access: every account must be enrolled by its immutable Entra
-`tenant ID + object ID`, with its portal role stored in PostgreSQL. See
+Microsoft accounts use the identity platform `common` authority; non-Microsoft visitors
+can create a password account whose Argon2id hash is stored separately. Authentication
+does not grant portal access: every new account is inactive until an administrator assigns
+and activates its PostgreSQL role. Microsoft identities are keyed by immutable
+`tenant ID + object ID`. See
 [docs/architecture.md](docs/architecture.md).
 
 The MVP contains synthetic data only. It is not approved for real student data.
@@ -27,6 +29,10 @@ The MVP contains synthetic data only. It is not approved for real student data.
 The application role comes from PostgreSQL after token validation. The frontend never
 selects the authorization role, and the assistant receives only the role chosen by the
 API. Reviewed assistant source material is in [`knowledge-base`](knowledge-base).
+
+Self-registration never accepts a role. All new requests start as inactive Student
+records; only the Administrator dashboard can activate an account or assign Teacher or
+Administrator.
 
 The proposed public endpoint is
 `https://mmaug-secure-portal.northeurope.cloudapp.azure.com`, reserved on Standard static

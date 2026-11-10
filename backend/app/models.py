@@ -25,8 +25,8 @@ class User(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    entra_tenant_id: Mapped[str] = mapped_column(String(36), index=True)
-    entra_object_id: Mapped[str] = mapped_column(String(64), index=True)
+    entra_tenant_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    entra_object_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     email: Mapped[str] = mapped_column(String(320), unique=True, index=True)
     display_name: Mapped[str] = mapped_column(String(160))
     role: Mapped[Role] = mapped_column(Enum(Role, native_enum=False), index=True)
@@ -43,6 +43,28 @@ class User(Base):
     audit_events: Mapped[list["AuditEvent"]] = relationship(
         back_populates="actor", foreign_keys="AuditEvent.actor_id"
     )
+    local_credential: Mapped["LocalCredential | None"] = relationship(
+        back_populates="user", cascade="all, delete-orphan", uselist=False
+    )
+
+
+class LocalCredential(Base):
+    __tablename__ = "local_credentials"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    password_hash: Mapped[str] = mapped_column(String(512))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
+
+    user: Mapped[User] = relationship(back_populates="local_credential")
 
 
 class AuditEvent(Base):

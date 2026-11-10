@@ -17,6 +17,7 @@ dependencies = [
   "PyJWT[crypto]>=2.10,<3",
   "httpx>=0.28,<1",
   "email-validator>=2.2,<3",
+  "argon2-cffi>=23.1,<26",
   "azure-identity>=1.19,<2",
   "azure-ai-projects>=2,<3",
   "azure-keyvault-secrets>=4.9,<5",
@@ -47,3 +48,6 @@ ignore = [
   "B008", # FastAPI uses dependency calls in parameter defaults by design.
   "S101",
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105"]

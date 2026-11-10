@@ -22,6 +22,30 @@ class UserUpdate(BaseModel):
     is_active: bool | None = None
 
 
+class LocalRegistrationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    display_name: str = Field(min_length=2, max_length=160)
+    email: EmailStr
+    password: str = Field(min_length=12, max_length=128)
+
+
+class LocalLoginRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=1, max_length=128)
+
+
+class RegistrationRead(BaseModel):
+    status: str
+    message: str
+
+
+class TokenRead(BaseModel):
+    access_token: str
+    token_type: str = "bearer"  # noqa: S105 - OAuth token type, not a secret
+    expires_in: int
+
+
 class AuditEventRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
