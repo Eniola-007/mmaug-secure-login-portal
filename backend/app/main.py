@@ -4,15 +4,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.db import Base, engine
 from app.routers import agents, audit, authentication, dashboard, health, users
+from app.runtime_migrations import start_runtime_migration
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     settings = get_settings()
-    if settings.environment in {"development", "test"}:
-        Base.metadata.create_all(bind=engine)
+    start_runtime_migration(settings.environment)
     yield
 
 

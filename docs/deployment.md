@@ -110,6 +110,10 @@ field, and the API Web App receives `AZURE_AD_CLIENT_SECRET` only as a Key Vault
 Grant that service principal **Foundry User** and the required Blob data role. These
 credentials do not replace the managed identity used by GitHub OIDC to deploy Azure.
 
+The API starts its idempotent Alembic migration in a background worker so App Service can
+answer platform warm-up probes immediately. `/health/ready` remains unavailable until the
+migration and a live PostgreSQL query both succeed.
+
 ## 6. Application Gateway WAF_v2
 
 The final hostname is `mmaug-secure-portal.northeurope.cloudapp.azure.com`, reserved on

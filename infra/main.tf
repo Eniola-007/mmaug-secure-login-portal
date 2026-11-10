@@ -202,13 +202,13 @@ resource "azurerm_postgresql_flexible_server_database" "portal" {
 resource "azurerm_key_vault_secret" "database_url" {
   name = "DATABASE-URL"
   value_wo = format(
-    "postgresql+psycopg://%s:%s@%s:5432/%s?sslmode=require",
+    "postgresql+psycopg://%s:%s@%s:5432/%s?sslmode=require&connect_timeout=15",
     var.postgres_admin_login,
     urlencode(random_password.postgres.result),
     azurerm_postgresql_flexible_server.portal.fqdn,
     azurerm_postgresql_flexible_server_database.portal.name
   )
-  value_wo_version = 2
+  value_wo_version = 3
   key_vault_id     = azurerm_key_vault.portal.id
 
 }
@@ -259,7 +259,7 @@ resource "azurerm_linux_web_app" "api" {
 
   site_config {
     always_on                         = var.app_service_sku != "F1"
-    app_command_line                  = "python -m alembic upgrade head && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    app_command_line                  = "python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
     ftps_state                        = "Disabled"
     minimum_tls_version               = "1.2"
     vnet_route_all_enabled            = true
