@@ -31,17 +31,26 @@
   a server-side guardrail that always derives the role from PostgreSQL.
 - Microsoft documentation confirms `gpt-5.4-mini` model version `2026-03-17`; the
   deployment name is parameterized for the Foundry administrator handoff.
+- Development workflow run `42759323240` completed successfully from commit `382309c`.
+- Frontend `https://app-mmaug-development-web-gkt6d.azurewebsites.net` returns HTTP 200
+  with the updated role dashboard and assistant interface.
+- API liveness and PostgreSQL-backed readiness both return HTTP 200 at
+  `https://app-mmaug-development-api-gkt6d.azurewebsites.net`.
+- The private `stmmaugkbgkt6d/knowledge-base` container contains the five reviewed
+  knowledge and guardrail files.
+- The approved Foundry service-principal credential is configured through a resolved Key
+  Vault reference. No Foundry project, project endpoint, or role-agent IDs exist yet, so
+  the server-side guarded fallback remains active.
 
 ## Live completion gates
 
-1. Run the infrastructure-first GitHub deployment and provide the returned Web App URL
-   to the Entra administrator.
-2. Receive the administrator-created SPA/API client IDs, configure GitHub variables, and
+1. Provide the deployed Web App URL to the Entra administrator, receive the created
+   SPA/API client IDs, configure GitHub variables, and
    rerun deployment to activate MSAL.
-3. Obtain a trusted TLS certificate, enable Application Gateway WAF_v2, and add the final
+2. Obtain a trusted TLS certificate, enable Application Gateway WAF_v2, and add the final
    gateway URL to the SPA redirects.
-4. Enroll eight synthetic accounts with their real tenant and object IDs.
-5. Complete the sign-in, role-isolation, WAF, audit, recovery, and monitoring demonstration.
-6. Administrator creates the Foundry project/model deployment and three file-search
+3. Enroll eight synthetic accounts with their real tenant and object IDs.
+4. Complete the sign-in, role-isolation, WAF, audit, recovery, and monitoring demonstration.
+5. Administrator creates the Foundry project/model deployment and three file-search
    agents, then grants the managed identity **Foundry User** and the required Storage data
    role. Configure the project endpoint and role agent names to replace safe fallback.
