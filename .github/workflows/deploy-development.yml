@@ -94,6 +94,8 @@ jobs:
         working-directory: infra
         shell: bash
         run: |
+          echo "API_APP_NAME=$(terraform output -raw api_app_name)" >> "$GITHUB_ENV"
+          echo "FRONTEND_APP_NAME=$(terraform output -raw frontend_app_name)" >> "$GITHUB_ENV"
           echo "API_APP_URL=$(terraform output -raw api_url)" >> "$GITHUB_ENV"
           echo "FRONTEND_APP_URL=$(terraform output -raw frontend_url)" >> "$GITHUB_ENV"
 
@@ -119,9 +121,15 @@ jobs:
           (cd frontend && npm ci && npm run build && cd dist && zip -r ../../frontend.zip .)
 
       - name: Deploy API
-        run: az webapp deploy --resource-group rg_mmaug_high_school --name "$(terraform -chdir=infra output -raw api_app_name)" --src-path backend.zip --type zip --clean true --async true --track-status false
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.API_APP_NAME }}
+          package: backend.zip
       - name: Deploy frontend
-        run: az webapp deploy --resource-group rg_mmaug_high_school --name "$(terraform -chdir=infra output -raw frontend_app_name)" --src-path frontend.zip --type zip --clean true --async true --track-status false
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.FRONTEND_APP_NAME }}
+          package: frontend.zip
       - name: Verify health
         run: |
           curl --fail --retry 60 --retry-delay 10 --retry-all-errors --max-time 20 "$API_APP_URL/health/ready"
