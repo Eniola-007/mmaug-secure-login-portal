@@ -12,7 +12,12 @@ export interface PortalUser {
 export interface DashboardData {
   role: Role;
   title: string;
-  actions: string[];
+  summary: string;
+  actions: Array<{
+    title: string;
+    description: string;
+  }>;
+  suggested_questions: string[];
 }
 
 export interface AuditEvent {

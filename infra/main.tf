@@ -19,6 +19,10 @@ resource "random_password" "postgres" {
   length           = 32
   special          = true
   override_special = "!#$%&*()-_=+[]{}:?"
+
+  keepers = {
+    security_rotation = "2026-11-09-alembic-log"
+  }
 }
 
 locals {
@@ -33,6 +37,24 @@ locals {
     },
     var.tags
   )
+}
+
+resource "azurerm_storage_account" "knowledge_base" {
+  name                             = "stmmaugkb${local.suffix}"
+  resource_group_name              = data.azurerm_resource_group.project.name
+  location                         = var.location
+  account_tier                     = "Standard"
+  account_replication_type         = "LRS"
+  min_tls_version                  = "TLS1_2"
+  allow_nested_items_to_be_public  = false
+  cross_tenant_replication_enabled = false
+  tags                             = local.common_tags
+}
+
+resource "azurerm_storage_container" "knowledge_base" {
+  name                  = "knowledge-base"
+  storage_account_id    = azurerm_storage_account.knowledge_base.id
+  container_access_type = "private"
 }
 
 resource "azurerm_virtual_network" "portal" {
@@ -186,9 +208,28 @@ resource "azurerm_key_vault_secret" "database_url" {
     azurerm_postgresql_flexible_server.portal.fqdn,
     azurerm_postgresql_flexible_server_database.portal.name
   )
+  value_wo_version = 2
+  key_vault_id     = azurerm_key_vault.portal.id
+
+}
+
+resource "azurerm_key_vault_secret" "foundry_client_secret" {
+  count = trimspace(var.azure_ad_client_id) != "" ? 1 : 0
+
+  name             = "FOUNDRY-CLIENT-SECRET"
+  value_wo         = var.azure_ad_client_secret
   value_wo_version = 1
   key_vault_id     = azurerm_key_vault.portal.id
 
+  lifecycle {
+    precondition {
+      condition = (
+        trimspace(var.azure_ad_tenant_id) != "" &&
+        trimspace(var.azure_ad_client_secret) != ""
+      )
+      error_message = "AZURE_AD_TENANT_ID and AZURE_AD_CLIENT_SECRET are required when AZURE_AD_CLIENT_ID is configured."
+    }
+  }
 }
 
 resource "azurerm_service_plan" "portal" {
@@ -229,25 +270,37 @@ resource "azurerm_linux_web_app" "api" {
     }
   }
 
-  app_settings = {
-    ENVIRONMENT                                = var.environment
-    DATABASE_URL                               = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.database_url.versionless_id})"
-    ENTRA_TENANT_ID                            = var.tenant_id
-    ENTRA_AUTHORITY_TENANT                     = "common"
-    ENTRA_API_CLIENT_ID                        = var.entra_api_client_id
-    ENTRA_REQUIRED_SCOPE                       = "access_as_user"
-    ALLOW_DEV_AUTH                             = "false"
+  app_settings = merge({
+    ENVIRONMENT            = var.environment
+    DATABASE_URL           = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.database_url.versionless_id})"
+    ENTRA_TENANT_ID        = var.tenant_id
+    ENTRA_AUTHORITY_TENANT = "common"
+    ENTRA_API_CLIENT_ID    = var.entra_api_client_id
+    ENTRA_REQUIRED_SCOPE   = "access_as_user"
+    ALLOW_DEV_AUTH         = "false"
     CORS_ORIGINS = jsonencode([
       var.application_gateway_enabled ? "https://${local.application_gateway_hostname}" : "https://${azurerm_linux_web_app.frontend.default_hostname}"
     ])
     APPLICATIONINSIGHTS_CONNECTION_STRING      = azurerm_application_insights.portal.connection_string
     ApplicationInsightsAgent_EXTENSION_VERSION = "~3"
+    AZURE_CLIENT_ID                            = data.azurerm_user_assigned_identity.runtime.client_id
+    AZURE_AD_CLIENT_ID                         = var.azure_ad_client_id
+    AZURE_AD_TENANT_ID                         = var.azure_ad_tenant_id
+    AZURE_AI_PROJECT_ENDPOINT                  = var.azure_ai_project_endpoint
+    AZURE_AI_MODEL_DEPLOYMENT_NAME             = var.azure_ai_model_deployment_name
+    AZURE_AI_STUDENT_AGENT_ID                  = var.azure_ai_student_agent_id
+    AZURE_AI_TEACHER_AGENT_ID                  = var.azure_ai_teacher_agent_id
+    AZURE_AI_ADMIN_AGENT_ID                    = var.azure_ai_admin_agent_id
+    KNOWLEDGE_BASE_STORAGE_URL                 = azurerm_storage_account.knowledge_base.primary_blob_endpoint
+    KNOWLEDGE_BASE_CONTAINER                   = azurerm_storage_container.knowledge_base.name
     SCM_DO_BUILD_DURING_DEPLOYMENT             = "false"
     ENABLE_ORYX_BUILD                          = "false"
     PYTHONPATH                                 = "/home/site/wwwroot/.python_packages/lib/site-packages"
     WEBSITES_CONTAINER_START_TIME_LIMIT        = "600"
     WEBSITES_PORT                              = "8000"
-  }
+    }, trimspace(var.azure_ad_client_id) != "" ? {
+    AZURE_AD_CLIENT_SECRET = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.foundry_client_secret[0].versionless_id})"
+  } : {})
 
   tags = local.common_tags
 }

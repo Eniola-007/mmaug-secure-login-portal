@@ -14,6 +14,13 @@
 - Students and teachers can read only their own profile. Only administrators can list or change users.
 - Administrative changes are deterministic API operations and create an audit event.
 - The role-specific AI endpoint selects the role on the server. An LLM is never an authorization layer.
+- The API rejects prompt overrides, secret requests, cross-user records, and privileged
+  action requests before calling Foundry.
+- Foundry uses the App Service managed identity, a curated private knowledge base, and no
+  state-changing tools. The model does not receive credentials or raw database access.
+- When the administrator-approved Foundry service principal is enabled, its client secret
+  is a write-only Terraform input stored in Key Vault; the Web App setting is a Key Vault
+  reference and the GitHub workflow continues to deploy through managed-identity OIDC.
 
 ## Managed identities
 
@@ -36,6 +43,8 @@ required reviewers.
 | SQL injection | SQLAlchemy parameterization | Code review and tests |
 | Secret leakage | Key Vault references and secret scanning | Terraform and CI |
 | Agent prompt injection | No privileged tools; backend role selection | Agent isolation test plan |
+| Hallucinated school policy | File-search grounding and explicit safe referral | Grounding evaluation |
+| Assistant data leakage | PostgreSQL role boundary; no question text in audit details | Audit review |
 | Direct database access | Private VNet address and no public endpoint | Terraform plan |
 | Web exploits and malicious request bodies | Application Gateway WAF_v2, OWASP 3.2 Prevention mode | WAF policy and logs |
 | Clear-text public traffic | HTTP-to-HTTPS redirect and Key Vault-backed certificate | Gateway listener configuration |

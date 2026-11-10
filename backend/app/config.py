@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -20,10 +20,17 @@ class Settings(BaseSettings):
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173"])
     password_reset_url: str = "https://passwordreset.microsoftonline.com/"  # noqa: S105
     applicationinsights_connection_string: str = ""
+    azure_client_id: str = ""
+    azure_ad_client_id: str = ""
+    azure_ad_client_secret: SecretStr = SecretStr("")
+    azure_ad_tenant_id: str = ""
     azure_ai_project_endpoint: str = ""
+    azure_ai_model_deployment_name: str = "gpt-5.4-mini"
     azure_ai_student_agent_id: str = ""
     azure_ai_teacher_agent_id: str = ""
     azure_ai_admin_agent_id: str = ""
+    knowledge_base_storage_url: str = ""
+    knowledge_base_container: str = "knowledge-base"
 
     @field_validator("cors_origins", mode="before")
     @classmethod
@@ -37,6 +44,11 @@ class Settings(BaseSettings):
         return (
             f"https://login.microsoftonline.com/{self.entra_authority_tenant}/discovery/v2.0/keys"
         )
+
+    @property
+    def alembic_database_url(self) -> str:
+        # Alembic writes the URL through ConfigParser, where percent is interpolation syntax.
+        return self.database_url.replace("%", "%%")
 
     def validate_security_mode(self) -> None:
         if self.environment in {"uat", "production"} and self.allow_dev_auth:

@@ -61,6 +61,10 @@ select { padding: .48rem; border: 1px solid #cbd2ce; border-radius: 6px; backgro
 .feature-card.accent { background: #eadfc8; }
 .card-number { display: block; margin-bottom: 2rem; color: #a8752c; font-weight: 700; }
 .text-button { border: 0; padding: 0; background: transparent; color: #77501a; font-weight: 700; }
+.prompt-strip { display: flex; align-items: center; flex-wrap: wrap; gap: .7rem; margin-top: 1rem; padding: 1rem 1.2rem; border: 1px solid #d9d9cf; border-radius: 12px; background: #fffdf8; }
+.prompt-strip strong { color: #315348; margin-right: .2rem; }
+.prompt-strip button { border: 1px solid #b9c9c3; border-radius: 999px; padding: .55rem .85rem; background: #edf4f1; color: #214b3e; }
+.prompt-strip button:hover { background: #dcebe5; }
 .panel { padding: clamp(1.4rem, 4vw, 3rem); }
 .panel.narrow { max-width: 780px; }
 .assistant-form { display: grid; gap: 1rem; }

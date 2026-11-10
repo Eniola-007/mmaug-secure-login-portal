@@ -1,7 +1,7 @@
 # MMAUG Secure Login Portal — Updated Technical Proposal
 
 **Response:** MMAUG-AIDB-RFP-002  
-**Version:** 4.1 — Infrastructure-first deployment and Entra administrator handoff
+**Version:** 4.2 — Role-aware Foundry assistants and curated knowledge base
 **Date:** 9 November 2026
 
 ## Executive proposal
@@ -17,6 +17,12 @@ OIDC to the single Contributor managed identity, deploys the Azure infrastructur
 application code, and returns the direct frontend Web App URL. The administrator then
 creates the SPA/API registrations and configures scopes, consent, and redirect URIs.
 A second deployment injects only the resulting non-secret client IDs and enables MSAL.
+
+The portal also provides separate student, teacher, and administrator assistant
+experiences. FastAPI selects the experience from the PostgreSQL role, applies deterministic
+guardrails, and then calls a managed-identity-authenticated Microsoft Foundry prompt agent.
+The approved `gpt-5.4-mini` model is grounded in curated MMAUG guidance published to a
+private Azure Storage container.
 
 ![Microsoft-style Azure architecture](architecture-microsoft.svg)
 
@@ -35,6 +41,9 @@ A second deployment injects only the resulting non-secret client IDs and enables
 | Database | Private PostgreSQL Flexible Server B1ms for development |
 | Secrets and certificates | Key Vault references; no secret is committed to source |
 | Monitoring | Workspace-based Application Insights and Log Analytics |
+| AI model | Microsoft Foundry `gpt-5.4-mini` deployment |
+| AI knowledge | Private Azure Blob container, curated Markdown, Foundry file search |
+| AI authorization | PostgreSQL role selection in FastAPI; no browser-selected role |
 
 ## Separation of duties
 
@@ -53,6 +62,11 @@ The Entra administrator owns these directory operations:
 - confirm whether Microsoft personal accounts are permitted by tenant policy.
 
 No client secret is created for the SPA, API, GitHub workflow, or managed identity.
+If the administrator later approves a confidential API flow and supplies an application
+credential, it is accepted only through the protected `AZURE_AD_CLIENT_ID`,
+`AZURE_AD_CLIENT_SECRET`, and `AZURE_AD_TENANT_ID` GitHub Environment secrets. The secret
+is written directly to Key Vault and is never embedded in the SPA, repository, Terraform
+output, or deployment log.
 
 ## Two-stage deployment
 
@@ -81,12 +95,26 @@ After a trusted TLS certificate is available, Application Gateway WAF_v2 becomes
 public entry point. It applies OWASP 3.2 managed rules in Prevention mode, routes
 `/api/*` to FastAPI, routes other paths to React, and maintains HTTPS to both backends.
 
+### Stage 4 — grounded role assistants
+
+Terraform creates a private knowledge-base container and the workflow publishes the
+reviewed files. The Foundry administrator deploys `gpt-5.4-mini`, creates three versioned
+prompt agents with file search, and grants the App Service managed identity **Foundry
+User** plus the required Storage data-plane role. The returned project endpoint and agent
+names are protected environment variables. Until those values exist, the UI explicitly
+uses its constrained safe fallback.
+
 ## Authorization and data protection
 
 Successful Microsoft authentication does not automatically grant portal access. FastAPI
 resolves the immutable `(tenant ID, object ID)` pair against PostgreSQL. Unenrolled or
 inactive identities receive no portal data. Student, teacher, and administrator roles are
 enforced by server-side dependencies and object-level checks.
+
+Assistant requests use that same database role. The pre-model guardrail refuses prompt
+override attempts, requests for secrets or another person's records, and role or permission
+changes. The agents receive no state-changing tools and cannot act as an authorization
+layer.
 
 PostgreSQL has no public endpoint. Secrets are referenced from Key Vault using managed
 identity, and deployment uses OIDC instead of stored Azure credentials. Monitoring data
@@ -103,6 +131,8 @@ resource access.
 6. Eight synthetic demonstration identities are enrolled using their tenant/object IDs.
 7. Tests verify sign-in, deny-by-default enrollment, role isolation, audit events,
    recovery, monitoring, WAF behavior, and absence of credentials from source control.
+8. File-search tests verify grounded answers, role boundaries, refusal behavior, safe
+   fallback, and the absence of question text from audit records.
 
 Real student data remains prohibited until privacy assessment, retention, backup and
 restore, penetration testing, Conditional Access, incident response, and operational

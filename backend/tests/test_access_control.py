@@ -79,4 +79,18 @@ def test_agent_route_uses_authenticated_role(client: TestClient) -> None:
     )
     assert response.status_code == 200
     assert response.json()["role"] == "teacher"
+    assert response.json()["mode"] == "guardrail"
+    assert "another person's records" in response.json()["response"]
     assert "cannot change permissions" in response.json()["safety_notice"]
+
+
+def test_agent_safe_fallback_is_role_specific(client: TestClient) -> None:
+    response = client.post(
+        "/api/agent/message",
+        headers=STUDENT,
+        json={"message": "What can I use my portal for?"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["mode"] == "safe-demo"
+    assert "student service" in response.json()["response"]

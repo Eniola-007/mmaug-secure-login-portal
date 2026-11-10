@@ -57,6 +57,11 @@ Save the returned identifiers as GitHub `development` variables:
 
 - `ENTRA_SPA_CLIENT_ID`
 - `ENTRA_API_CLIENT_ID`
+- `AZURE_AI_PROJECT_ENDPOINT` after the Foundry project exists
+- `AZURE_AI_MODEL_DEPLOYMENT_NAME` (`gpt-5.4-mini`)
+- `AZURE_AI_STUDENT_AGENT_ID`
+- `AZURE_AI_TEACHER_AGENT_ID`
+- `AZURE_AI_ADMIN_AGENT_ID`
 
 Rerun `Deploy development`. The frontend is rebuilt with MSAL enabled and the API is
 configured to validate tokens for the registered API audience.
@@ -74,7 +79,38 @@ python -m app.enroll_users --file /tmp/mmaug-enrollment.json
 Use [enrollment.template.json](enrollment.template.json). Never include passwords or
 access tokens in the enrollment file.
 
-## 5. Application Gateway WAF_v2
+## 5. Foundry knowledge and role agents
+
+The workflow creates a private `knowledge-base` Blob container and uploads the reviewed
+Markdown files from the repository. It obtains a storage key only for that upload, masks
+it immediately, and does not store it in GitHub or application settings.
+
+The Foundry administrator must then:
+
+1. deploy model `gpt-5.4-mini` version `2026-03-17` in a supported deployment type;
+2. create a file-search vector store from the approved knowledge files;
+3. create versioned prompt agents named for student, teacher, and administrator;
+4. grant `id-mmaug-secure-login-portal` **Foundry User** on the project;
+5. grant the identity the Storage data-plane role required by the selected Foundry setup;
+6. configure the five `AZURE_AI_*` environment variables above and redeploy; and
+7. verify grounded answers, role isolation, refusals, fallback, and audit metadata.
+
+Do not put a Foundry API key or application password in the repository. Microsoft Entra
+managed identity is the preferred runtime authentication mechanism.
+
+If the administrator requires the approved Foundry service principal instead, configure
+these as GitHub `development` **environment secrets**:
+
+- `AZURE_AD_CLIENT_ID`
+- `AZURE_AD_CLIENT_SECRET`
+- `AZURE_AD_TENANT_ID`
+
+The workflow never prints these values. Terraform uses the write-only Key Vault value
+field, and the API Web App receives `AZURE_AD_CLIENT_SECRET` only as a Key Vault reference.
+Grant that service principal **Foundry User** and the required Blob data role. These
+credentials do not replace the managed identity used by GitHub OIDC to deploy Azure.
+
+## 6. Application Gateway WAF_v2
 
 The final hostname is `mmaug-secure-portal.northeurope.cloudapp.azure.com`, reserved on
 Standard static Public IP `68.219.97.185`.
@@ -90,7 +126,7 @@ After obtaining a trusted certificate:
 The gateway redirects HTTP to HTTPS, applies OWASP 3.2 rules in Prevention mode, routes
 `/api/*` to FastAPI, and routes all other paths to React.
 
-## 6. Acceptance verification
+## 7. Acceptance verification
 
 1. `/health/ready` returns HTTP 200.
 2. The frontend URL returns HTTP 200 and displays the MMAUG-branded portal.
@@ -101,3 +137,5 @@ The gateway redirects HTTP to HTTPS, applies OWASP 3.2 rules in Prevention mode,
 7. Administrative changes create audit events.
 8. WAF and Application Insights record the expected telemetry.
 9. The repository contains no Azure client secret or publish profile.
+10. The knowledge container is private and contains only reviewed files.
+11. Each role agent stays inside its server-selected boundary and refuses cross-user data.

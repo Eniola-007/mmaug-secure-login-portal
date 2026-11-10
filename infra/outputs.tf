@@ -26,6 +26,14 @@ output "runtime_identity_client_id" {
   value = data.azurerm_user_assigned_identity.runtime.client_id
 }
 
+output "knowledge_base_storage_account_name" {
+  value = azurerm_storage_account.knowledge_base.name
+}
+
+output "knowledge_base_container_name" {
+  value = azurerm_storage_container.knowledge_base.name
+}
+
 output "application_gateway_public_ip" {
   value = data.azurerm_public_ip.application_gateway.ip_address
 }

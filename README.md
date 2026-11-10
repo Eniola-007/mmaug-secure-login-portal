@@ -7,6 +7,8 @@ Production-oriented MVP for RFP `MMAUG-AIDB-RFP-002`.
 - React + TypeScript frontend with Microsoft work, school, guest, and personal account sign-in
 - FastAPI protected API with server-side role and account-status checks
 - PostgreSQL application profiles and append-only audit events
+- Microsoft Foundry role assistants grounded in a curated Azure Blob knowledge base,
+  with deterministic pre-model guardrails and a safe fallback
 - Azure App Service Plan, Application Gateway WAF_v2, Key Vault, Application Insights,
   and one approved user-assigned managed identity
 - Terraform infrastructure and GitHub Actions deployment through OIDC
@@ -21,6 +23,10 @@ does not grant portal access: every account must be enrolled by its immutable En
 [docs/architecture.md](docs/architecture.md).
 
 The MVP contains synthetic data only. It is not approved for real student data.
+
+The application role comes from PostgreSQL after token validation. The frontend never
+selects the authorization role, and the assistant receives only the role chosen by the
+API. Reviewed assistant source material is in [`knowledge-base`](knowledge-base).
 
 The proposed public endpoint is
 `https://mmaug-secure-portal.northeurope.cloudapp.azure.com`, reserved on Standard static

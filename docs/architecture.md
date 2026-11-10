@@ -20,6 +20,8 @@ or administer Microsoft Entra app registrations.
    workflow rebuilds the portal with MSAL enabled.
 7. Application Gateway WAF_v2 and the reserved public hostname become the final ingress
    after the trusted TLS certificate is available.
+8. The existing VNet remains in place for private PostgreSQL and the optional Application
+   Gateway. It is not removed during the current deployment.
 
 ![Microsoft-style Azure architecture](architecture-microsoft.svg)
 
@@ -35,6 +37,28 @@ PKCE; no SPA client secret is created.
 - PostgreSQL resolves the immutable `(entra_tenant_id, entra_object_id)` pair.
 - Authenticated but unenrolled identities receive no portal data.
 - PostgreSQL supplies the student, teacher, or administrator portal role.
+
+## Role-aware assistant and knowledge boundary
+
+The API selects the assistant from the PostgreSQL role after authentication; the browser
+cannot select or assert a role. Student, teacher, and administrator dashboards each expose
+their own guarded assistant experience.
+
+- The approved model is the `gpt-5.4-mini` deployment in Microsoft Foundry.
+- Curated Markdown guidance is published to the private `knowledge-base` container in an
+  Azure Storage account and ingested into a Foundry file-search vector store.
+- The App Service user-assigned managed identity is the preferred Foundry credential. The
+  administrator-approved service principal is also supported when the three `AZURE_AD_*`
+  GitHub Environment secrets are configured; its secret is written directly to Key Vault
+  and App Service receives only a Key Vault reference.
+- The identity selected for Foundry must receive **Foundry User** and the storage data role
+  required by the selected Foundry setup.
+- Server-side guardrails reject prompt-injection, secret, cross-user-data, and privileged
+  action requests before a model call.
+- Agents have no state-changing tools. Every request records only role, mode, and outcome;
+  the question text is not copied into the audit event.
+- When Foundry is not configured or unavailable, the portal returns a constrained local
+  welcome message rather than bypassing the boundary.
 
 ## Deployment identity boundary
 
@@ -55,6 +79,9 @@ app-registration ownership and tenant-wide consent remain with the administrator
 - Final ingress: Application Gateway WAF_v2, HTTP-to-HTTPS redirect, OWASP 3.2 Prevention.
 - Routing: `/api/*` to FastAPI; all other paths to the React SPA.
 - Database: PostgreSQL Flexible Server B1ms on a delegated subnet with no public access.
+- AI knowledge: private Blob container containing only reviewed school-service guidance.
+- AI runtime: managed-identity Foundry access with separate role agent names and
+  `gpt-5.4-mini` as the approved deployment.
 - Secrets: generated database bootstrap credential in encrypted Terraform state and Key
   Vault; no Entra client secret or App Service publishing credential.
 - Monitoring: workspace-based Application Insights and Log Analytics.

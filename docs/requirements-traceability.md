@@ -20,4 +20,7 @@
 | Monitoring | Workspace-based Application Insights | Azure telemetry query |
 | Private database | VNet delegated PostgreSQL with public access disabled | Terraform plan |
 | 1,500 accounts | Stateless API, indexed users, managed database | Load-test record |
-| Three agent experiences | Server-side role-selected endpoint; Foundry IDs by role | Isolation tests |
+| Three agent experiences | Server-side PostgreSQL role selection; Foundry agent name by role | Isolation tests |
+| Curated agent knowledge | Private Azure Blob container uploaded by the OIDC workflow | Blob inventory and grounding test |
+| Model choice | `gpt-5.4-mini` deployment variable | Foundry deployment evidence |
+| Agent guardrails | Pre-model refusal, no state-changing tools, safe fallback, minimal audit | Adversarial prompt tests |

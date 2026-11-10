@@ -49,6 +49,55 @@ variable "entra_spa_client_id" {
   default     = "00000000-0000-0000-0000-000000000000"
 }
 
+variable "azure_ai_project_endpoint" {
+  description = "Microsoft Foundry project endpoint. Empty keeps the guarded local assistant fallback active."
+  type        = string
+  default     = ""
+}
+
+variable "azure_ai_model_deployment_name" {
+  description = "Approved Microsoft Foundry model deployment used by the role agents."
+  type        = string
+  default     = "gpt-5.4-mini"
+}
+
+variable "azure_ai_student_agent_id" {
+  description = "Versioned Foundry prompt-agent name for the student experience."
+  type        = string
+  default     = ""
+}
+
+variable "azure_ai_teacher_agent_id" {
+  description = "Versioned Foundry prompt-agent name for the teacher experience."
+  type        = string
+  default     = ""
+}
+
+variable "azure_ai_admin_agent_id" {
+  description = "Versioned Foundry prompt-agent name for the administrator experience."
+  type        = string
+  default     = ""
+}
+
+variable "azure_ad_client_id" {
+  description = "Client ID of the administrator-approved service principal used only for Foundry calls."
+  type        = string
+  default     = ""
+}
+
+variable "azure_ad_tenant_id" {
+  description = "Tenant ID of the administrator-approved Foundry service principal."
+  type        = string
+  default     = ""
+}
+
+variable "azure_ad_client_secret" {
+  description = "Client secret of the administrator-approved Foundry service principal. Written directly to Key Vault."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
 variable "postgres_admin_login" {
   description = "PostgreSQL bootstrap administrator login."
   type        = string

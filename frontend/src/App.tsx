@@ -96,6 +96,11 @@ export default function App() {
     }
   }
 
+  function askSuggested(question: string) {
+    setAgentMessage(question);
+    setView("assistant");
+  }
+
   if (!account && !devAuthEnabled) {
     return (
       <main className="login-shell">
@@ -186,14 +191,18 @@ export default function App() {
         {!loading && currentUser && view === "dashboard" && dashboard && (
           <section>
             <div className="hero-panel">
-              <div><p className="eyebrow">YOUR SPACE</p><h1>{dashboard.title}</h1><p>Tools and information shown here are limited to your approved role.</p></div>
+              <div><p className="eyebrow">YOUR SPACE</p><h1>{dashboard.title}</h1><p>{dashboard.summary}</p></div>
               <div className="shield" aria-hidden="true">✓</div>
             </div>
             <div className="card-grid">
               {dashboard.actions.map((action, index) => (
-                <article className="feature-card" key={action}><span className="card-number">0{index + 1}</span><h3>{action}</h3><p>Access is checked by the API before any information is returned.</p></article>
+                <article className="feature-card" key={action.title}><span className="card-number">0{index + 1}</span><h3>{action.title}</h3><p>{action.description}</p></article>
               ))}
               <article className="feature-card accent"><span className="card-number">AI</span><h3>Role-aware assistant</h3><p>Designed to stay inside your approved information boundary.</p><button className="text-button" onClick={() => void openView("assistant")}>Open assistant →</button></article>
+            </div>
+            <div className="prompt-strip" aria-label="Suggested questions">
+              <strong>Ask your assistant</strong>
+              {dashboard.suggested_questions.map((question) => <button key={question} onClick={() => askSuggested(question)}>{question}</button>)}
             </div>
           </section>
         )}
@@ -201,8 +210,8 @@ export default function App() {
         {currentUser && view === "assistant" && (
           <section className="panel narrow">
             <p className="eyebrow">{currentUser.role.toUpperCase()} ASSISTANT</p>
-            <h1>How can I help?</h1>
-            <p className="muted">Do not enter passwords, access tokens, or personal information.</p>
+            <h1>Welcome. How can I help?</h1>
+            <p className="muted">I answer from approved MMAUG guidance for your database-assigned role. Do not enter passwords, access tokens, or personal information.</p>
             <form className="assistant-form" onSubmit={(event) => void askAgent(event)}>
               <textarea value={agentMessage} onChange={(event) => setAgentMessage(event.target.value)} maxLength={2000} required placeholder="Ask about approved school resources…" />
               <button className="primary" type="submit">Send securely</button>

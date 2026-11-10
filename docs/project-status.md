@@ -1,4 +1,4 @@
-# Project status — 9 November 2026
+# Project status — 10 November 2026
 
 ## Completed in source
 
@@ -25,6 +25,12 @@
 - Eight synthetic accounts, role dashboards, admin controls, audit events, recovery,
   server-side RBAC, object-level checks, migrations, Terraform, CI, and OIDC deployment
   remain implemented.
+- Curated student, teacher, administrator, service-overview, and guardrail knowledge files
+  are implemented for publication to a private Azure Storage container.
+- Dashboards now include role-specific service cards, suggested assistant questions, and
+  a server-side guardrail that always derives the role from PostgreSQL.
+- Microsoft documentation confirms `gpt-5.4-mini` model version `2026-03-17`; the
+  deployment name is parameterized for the Foundry administrator handoff.
 
 ## Live completion gates
 
@@ -36,5 +42,6 @@
    gateway URL to the SPA redirects.
 4. Enroll eight synthetic accounts with their real tenant and object IDs.
 5. Complete the sign-in, role-isolation, WAF, audit, recovery, and monitoring demonstration.
-6. Approve Foundry region, model, quota, tools, and budget before replacing the current
-   constrained role-specific assistant demo.
+6. Administrator creates the Foundry project/model deployment and three file-search
+   agents, then grants the managed identity **Foundry User** and the required Storage data
+   role. Configure the project endpoint and role agent names to replace safe fallback.

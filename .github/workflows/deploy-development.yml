@@ -59,12 +59,36 @@ jobs:
           TF_VAR_tenant_id: ${{ vars.AZURE_TENANT_ID }}
           TF_VAR_entra_api_client_id: ${{ vars.ENTRA_API_CLIENT_ID || '00000000-0000-0000-0000-000000000000' }}
           TF_VAR_entra_spa_client_id: ${{ vars.ENTRA_SPA_CLIENT_ID || '00000000-0000-0000-0000-000000000000' }}
+          TF_VAR_azure_ai_project_endpoint: ${{ vars.AZURE_AI_PROJECT_ENDPOINT }}
+          TF_VAR_azure_ai_model_deployment_name: ${{ vars.AZURE_AI_MODEL_DEPLOYMENT_NAME || 'gpt-5.4-mini' }}
+          TF_VAR_azure_ai_student_agent_id: ${{ vars.AZURE_AI_STUDENT_AGENT_ID }}
+          TF_VAR_azure_ai_teacher_agent_id: ${{ vars.AZURE_AI_TEACHER_AGENT_ID }}
+          TF_VAR_azure_ai_admin_agent_id: ${{ vars.AZURE_AI_ADMIN_AGENT_ID }}
+          TF_VAR_azure_ad_client_id: ${{ secrets.AZURE_AD_CLIENT_ID }}
+          TF_VAR_azure_ad_client_secret: ${{ secrets.AZURE_AD_CLIENT_SECRET }}
+          TF_VAR_azure_ad_tenant_id: ${{ secrets.AZURE_AD_TENANT_ID }}
           TF_VAR_application_gateway_enabled: ${{ vars.APPLICATION_GATEWAY_ENABLED || 'false' }}
           TF_VAR_application_gateway_dns_label: ${{ vars.APPLICATION_GATEWAY_DNS_LABEL || 'mmaug-secure-portal' }}
           TF_VAR_application_gateway_public_ip_name: pip-mmaug-secure-portal
           TF_VAR_application_gateway_host_name: ${{ vars.APPLICATION_GATEWAY_HOST_NAME }}
           TF_VAR_application_gateway_certificate_secret_id: ${{ secrets.APPLICATION_GATEWAY_CERTIFICATE_SECRET_ID }}
         run: terraform apply -auto-approve
+
+      - name: Publish approved knowledge base
+        working-directory: infra
+        shell: bash
+        run: |
+          storage_account="$(terraform output -raw knowledge_base_storage_account_name)"
+          container="$(terraform output -raw knowledge_base_container_name)"
+          storage_key="$(az storage account keys list --resource-group rg_mmaug_high_school --account-name "$storage_account" --query '[0].value' --output tsv)"
+          echo "::add-mask::$storage_key"
+          az storage blob upload-batch \
+            --account-name "$storage_account" \
+            --account-key "$storage_key" \
+            --destination "$container" \
+            --source ../knowledge-base \
+            --overwrite \
+            --output none
 
       - name: Capture deployment URLs
         working-directory: infra
