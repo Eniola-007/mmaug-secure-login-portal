@@ -36,12 +36,15 @@ def test_verification_and_reset_messages_use_secure_frontend_links(monkeypatch) 
 
     assert email_service.send_verification_email("learner@example.com", "A <Learner>", "v&x")
     assert email_service.send_password_reset_email("learner@example.com", "A Learner", "r&x")
+    assert email_service.send_password_setup_email("learner@example.com", "A Learner", "s&x")
 
-    assert len(client.messages) == 2
+    assert len(client.messages) == 3
     assert "verify_email=v%26x" in client.messages[0]["content"]["html"]
     assert "A &lt;Learner&gt;" in client.messages[0]["content"]["html"]
     assert "reset_password=r%26x" in client.messages[1]["content"]["html"]
     assert client.messages[0]["senderAddress"] == "donotreply@example.azurecomm.net"
+    assert "reset_password=s%26x" in client.messages[2]["content"]["html"]
+    assert client.messages[2]["content"]["subject"] == "Set up your MMAUG portal password"
 
 
 def test_email_delivery_fails_closed(monkeypatch) -> None:

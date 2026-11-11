@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import User
+from app.models import Role, User
 
 
 def test_local_registration_is_pending_and_cannot_choose_role(client: TestClient) -> None:
@@ -100,6 +100,53 @@ def test_local_login_rejects_wrong_password(client: TestClient) -> None:
         json={"email": "student1@mmaug.example", "password": "not-the-password"},
     )
     assert response.status_code == 401
+
+
+def test_pre_enrolled_user_can_securely_set_up_local_password(
+    client: TestClient, db_session: Session, monkeypatch
+) -> None:
+    setup: dict[str, str] = {}
+    user = User(
+        email="pre.enrolled@example.com",
+        display_name="Pre Enrolled Admin",
+        role=Role.ADMIN,
+        is_active=True,
+    )
+    db_session.add(user)
+    db_session.commit()
+    monkeypatch.setattr(
+        "app.routers.authentication.send_password_setup_email",
+        lambda _email, _name, token: setup.update(token=token) or True,
+    )
+
+    requested = client.post(
+        "/api/auth/register",
+        json={
+            "display_name": "Pre Enrolled Admin",
+            "email": user.email,
+            "password": "This-value-is-not-stored-2026",
+        },
+    )
+    assert requested.status_code == 201
+    assert setup["token"]
+    db_session.refresh(user)
+    assert user.local_credential is None
+
+    password = "A-new-secure-admin-passphrase-2026"
+    completed = client.post(
+        "/api/auth/reset-password",
+        json={"token": setup["token"], "password": password},
+    )
+    assert completed.status_code == 200
+    assert completed.json()["status"] == "password_setup"
+    db_session.refresh(user)
+    assert user.email_verified_at is not None
+    assert user.local_credential is not None
+
+    login = client.post(
+        "/api/auth/login", json={"email": user.email, "password": password}
+    )
+    assert login.status_code == 200
 
 
 def test_password_reset_is_generic_and_revokes_old_sessions(

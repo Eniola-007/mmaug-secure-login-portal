@@ -88,3 +88,27 @@ def send_password_reset_email(recipient: str, display_name: str, token: str) -> 
         </div>
         """,
     )
+
+
+def send_password_setup_email(recipient: str, display_name: str, token: str) -> bool:
+    settings = get_settings()
+    link = f"{settings.public_frontend_url.rstrip('/')}?{urlencode({'reset_password': token})}"
+    safe_name = html.escape(display_name)
+    safe_link = html.escape(link, quote=True)
+    return _send(
+        recipient=recipient,
+        display_name=display_name,
+        subject="Set up your MMAUG portal password",
+        html_body=f"""
+        <div style="font-family:Arial,sans-serif;color:#18352c;line-height:1.6">
+          <h1 style="color:#0d382d">Set up your portal password</h1>
+          <p>Hello {safe_name},</p>
+          <p>Your school account is already enrolled. Use this one-time link to verify your
+          email address and choose your local portal password.</p>
+          <p><a href="{safe_link}" style="background:#cf963c;color:#fff;padding:12px 18px;
+          border-radius:8px;text-decoration:none;font-weight:bold">Set up password</a></p>
+          <p>This link expires in {settings.password_reset_minutes} minutes. If you did not
+          request local access, you can ignore this message.</p>
+        </div>
+        """,
+    )

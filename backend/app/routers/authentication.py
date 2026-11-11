@@ -19,7 +19,11 @@ from app.auth import (
 )
 from app.config import get_settings
 from app.db import get_db
-from app.email_service import send_password_reset_email, send_verification_email
+from app.email_service import (
+    send_password_reset_email,
+    send_password_setup_email,
+    send_verification_email,
+)
 from app.models import (
     EmailVerificationToken,
     LocalCredential,
@@ -108,6 +112,19 @@ def _issue_password_reset(db: Session, user: User) -> bool:
     return send_password_reset_email(user.email, user.display_name, raw_token)
 
 
+def _issue_password_setup(db: Session, user: User) -> bool:
+    raw_token = secrets.token_urlsafe(32)
+    db.add(
+        PasswordResetToken(
+            user_id=user.id,
+            token_digest=_token_digest(raw_token),
+            expires_at=datetime.now(UTC) + timedelta(minutes=get_settings().password_reset_minutes),
+        )
+    )
+    db.commit()
+    return send_password_setup_email(user.email, user.display_name, raw_token)
+
+
 @router.post("/register", response_model=RegistrationRead, status_code=status.HTTP_201_CREATED)
 def register_local_account(
     registration: LocalRegistrationRequest,
@@ -118,7 +135,18 @@ def register_local_account(
     enforce_rate_limit(db, request, scope="register", subject=email, limit=5, window_seconds=3600)
     existing = db.scalar(select(User).where(User.email == email))
     if existing:
-        if existing.local_credential and not existing.email_verified_at:
+        if not existing.local_credential:
+            delivered = _issue_password_setup(db, existing)
+            if not delivered:
+                record_event(
+                    db,
+                    action="email.password_setup_delivery_failed",
+                    target_type="user",
+                    target_id=existing.id,
+                    outcome="failure",
+                    correlation_id=request.headers.get("X-Correlation-ID"),
+                )
+        elif not existing.email_verified_at:
             _issue_verification(db, existing)
         return _pending_response()
 
@@ -298,7 +326,9 @@ def resend_verification(
         db, request, scope="resend-verification", subject=email, limit=5, window_seconds=3600
     )
     user = db.scalar(select(User).where(User.email == email))
-    if user and user.local_credential and not user.email_verified_at:
+    if user and not user.local_credential:
+        _issue_password_setup(db, user)
+    elif user and not user.email_verified_at:
         _issue_verification(db, user)
     return RegistrationRead(
         status="accepted",
@@ -317,8 +347,11 @@ def forgot_password(
         db, request, scope="forgot-password", subject=email, limit=5, window_seconds=3600
     )
     user = db.scalar(select(User).where(User.email == email))
-    if user and user.local_credential and user.email_verified_at:
+    if user and not user.local_credential:
+        _issue_password_setup(db, user)
+    elif user and user.email_verified_at:
         _issue_password_reset(db, user)
+    if user:
         record_event(
             db,
             action="user.password_reset_requested",
@@ -350,10 +383,13 @@ def reset_password(
             status_code=400, detail="This password-reset link is invalid or expired"
         )
     user = token.user
-    if not user.local_credential:
-        raise HTTPException(status_code=400, detail="This account does not use a local password")
+    is_setup = not user.local_credential
     _validate_new_password(payload.password, user.email)
-    user.local_credential.password_hash = hash_password(payload.password)
+    if is_setup:
+        user.local_credential = LocalCredential(password_hash=hash_password(payload.password))
+        user.email_verified_at = now
+    else:
+        user.local_credential.password_hash = hash_password(payload.password)
     user.auth_version += 1
     db.execute(
         update(PasswordResetToken)
@@ -367,14 +403,18 @@ def reset_password(
     db.commit()
     record_event(
         db,
-        action="user.password_reset_completed",
+        action="user.password_setup_completed" if is_setup else "user.password_reset_completed",
         target_type="user",
         target_id=user.id,
         correlation_id=request.headers.get("X-Correlation-ID"),
     )
     return RegistrationRead(
-        status="password_reset",
-        message="Your password has been reset. You can now sign in.",
+        status="password_setup" if is_setup else "password_reset",
+        message=(
+            "Your email is verified and your password is ready. You can now sign in."
+            if is_setup
+            else "Your password has been reset. You can now sign in."
+        ),
     )
 
 
