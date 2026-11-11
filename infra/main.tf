@@ -300,22 +300,22 @@ resource "azurerm_linux_web_app" "api" {
   }
 
   app_settings = merge({
-    ENVIRONMENT                = var.environment
-    DATABASE_URL               = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.database_url.versionless_id})"
-    ENTRA_TENANT_ID            = var.tenant_id
-    ENTRA_AUTHORITY_TENANT     = "common"
-    ENTRA_API_CLIENT_ID        = var.entra_api_client_id
-    ENTRA_REQUIRED_SCOPE       = "access_as_user"
-    ALLOW_DEV_AUTH             = "false"
-    LOCAL_AUTH_JWT_SECRET      = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.local_auth_jwt.versionless_id})"
-    LOCAL_AUTH_TOKEN_MINUTES   = "60"
-    PUBLIC_FRONTEND_URL        = "https://${azurerm_linux_web_app.frontend.default_hostname}"
-    EMAIL_DELIVERY_ENABLED     = "true"
-    ACS_EMAIL_ENDPOINT         = "https://${azurerm_communication_service.portal.hostname}"
-    ACS_EMAIL_SENDER           = "donotreply@${azurerm_email_communication_service_domain.portal.from_sender_domain}"
-    EMAIL_VERIFICATION_MINUTES = "60"
-    PASSWORD_RESET_MINUTES     = "30"
-    CORS_ORIGINS = jsonencode(["https://${azurerm_linux_web_app.frontend.default_hostname}"])
+    ENVIRONMENT                                = var.environment
+    DATABASE_URL                               = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.database_url.versionless_id})"
+    ENTRA_TENANT_ID                            = var.tenant_id
+    ENTRA_AUTHORITY_TENANT                     = "common"
+    ENTRA_API_CLIENT_ID                        = var.entra_api_client_id
+    ENTRA_REQUIRED_SCOPE                       = "access_as_user"
+    ALLOW_DEV_AUTH                             = "false"
+    LOCAL_AUTH_JWT_SECRET                      = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.local_auth_jwt.versionless_id})"
+    LOCAL_AUTH_TOKEN_MINUTES                   = "60"
+    PUBLIC_FRONTEND_URL                        = "https://${azurerm_linux_web_app.frontend.default_hostname}"
+    EMAIL_DELIVERY_ENABLED                     = "true"
+    ACS_EMAIL_ENDPOINT                         = "https://${azurerm_communication_service.portal.hostname}"
+    ACS_EMAIL_SENDER                           = "donotreply@${azurerm_email_communication_service_domain.portal.from_sender_domain}"
+    EMAIL_VERIFICATION_MINUTES                 = "60"
+    PASSWORD_RESET_MINUTES                     = "30"
+    CORS_ORIGINS                               = jsonencode(["https://${azurerm_linux_web_app.frontend.default_hostname}"])
     APPLICATIONINSIGHTS_CONNECTION_STRING      = azurerm_application_insights.portal.connection_string
     ApplicationInsightsAgent_EXTENSION_VERSION = "~3"
     AZURE_CLIENT_ID                            = data.azurerm_user_assigned_identity.runtime.client_id
