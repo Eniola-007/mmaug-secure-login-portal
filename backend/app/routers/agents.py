@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
@@ -20,6 +22,7 @@ from app.rate_limit import enforce_rate_limit
 from app.schemas import AgentRequest, AgentResponse, PublicAgentResponse
 
 router = APIRouter(prefix="/agent", tags=["agents"])
+logger = logging.getLogger(__name__)
 
 
 def _ask_foundry(project_endpoint: str, agent_name: str, prompt: str) -> str:
@@ -28,16 +31,18 @@ def _ask_foundry(project_endpoint: str, agent_name: str, prompt: str) -> str:
 
     settings = get_settings()
     client_secret = settings.azure_ad_client_secret.get_secret_value()
-    if settings.azure_ad_client_id and settings.azure_ad_tenant_id and client_secret:
+    if settings.azure_client_id:
+        credential = DefaultAzureCredential(
+            managed_identity_client_id=settings.azure_client_id
+        )
+    elif settings.azure_ad_client_id and settings.azure_ad_tenant_id and client_secret:
         credential = ClientSecretCredential(
             tenant_id=settings.azure_ad_tenant_id,
             client_id=settings.azure_ad_client_id,
             client_secret=client_secret,
         )
     else:
-        credential = DefaultAzureCredential(
-            managed_identity_client_id=settings.azure_client_id or None
-        )
+        credential = DefaultAzureCredential()
     project = AIProjectClient(endpoint=project_endpoint, credential=credential)
     openai = project.get_openai_client()
     conversation = openai.conversations.create()
@@ -91,6 +96,7 @@ def public_message(
             )
             mode = "foundry"
         except Exception:
+            logger.exception("Foundry visitor request failed; using guarded fallback")
             mode = "safe-fallback"
             outcome = "fallback"
 
@@ -153,6 +159,9 @@ def message(
             )
             mode = "foundry"
         except Exception:
+            logger.exception(
+                "Foundry %s request failed; using guarded fallback", user.role.value
+            )
             mode = "safe-fallback"
             outcome = "fallback"
 

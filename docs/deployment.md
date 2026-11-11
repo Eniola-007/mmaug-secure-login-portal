@@ -109,6 +109,11 @@ The Foundry administrator must:
 5. rerun **Deploy development**; and
 6. verify grounded answers, role isolation, refusals, fallback, and audit metadata.
 
+`Contributor` is not sufficient for agent inference. The runtime managed identity must
+also have **Foundry User** on the Foundry account or project. The API deliberately prefers
+that managed identity at runtime; the approved service principal is retained for the
+protected provisioning workflow only.
+
 Creating those role assignments requires **Owner**, **User Access Administrator**, or an
 equivalent role-assignment permission. Resource-group Contributor alone cannot grant RBAC.
 

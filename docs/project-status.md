@@ -51,6 +51,10 @@
   Vault reference. Terraform now creates the Foundry project/model and waits for project
   readiness before creating it, avoiding the transient Azure 409 observed in workflow run
   `42895283734`.
+- Workflow run `42941949396` completed successfully from commit `655b2aa`, including
+  Terraform apply and provisioning the Visitor, Student, Teacher, and Administrator
+  agents. Live agent requests safely fall back until an Owner or User Access Administrator
+  grants `id-mmaug-secure-login-portal` **Foundry User**; Contributor cannot assign it.
 
 ## Live completion gates
 
