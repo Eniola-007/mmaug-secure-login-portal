@@ -37,7 +37,10 @@ def _send(*, recipient: str, display_name: str, subject: str, html_body: str) ->
         },
     }
     try:
-        _client().begin_send(message).result()
+        # The initial 202 response confirms that ACS accepted the message. Do not
+        # hold an interactive authentication request open while ACS polls for the
+        # final mailbox-delivery status, which can take several minutes.
+        _client().begin_send(message, polling=False).result()
     except Exception:  # Azure SDK exceptions vary by transport and service response.
         logger.exception("Azure Communication Services email delivery failed")
         return False

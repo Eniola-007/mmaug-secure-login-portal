@@ -11,9 +11,11 @@ class _Poller:
 class _EmailClient:
     def __init__(self) -> None:
         self.messages: list[dict] = []
+        self.polling_values: list[bool] = []
 
-    def begin_send(self, message: dict) -> _Poller:
+    def begin_send(self, message: dict, *, polling: bool) -> _Poller:
         self.messages.append(message)
+        self.polling_values.append(polling)
         return _Poller()
 
 
@@ -43,6 +45,7 @@ def test_verification_and_reset_messages_use_secure_frontend_links(monkeypatch) 
     assert "A &lt;Learner&gt;" in client.messages[0]["content"]["html"]
     assert "reset_password=r%26x" in client.messages[1]["content"]["html"]
     assert client.messages[0]["senderAddress"] == "donotreply@example.azurecomm.net"
+    assert client.polling_values == [False, False, False]
     assert "reset_password=s%26x" in client.messages[2]["content"]["html"]
     assert client.messages[2]["content"]["subject"] == "Set up your MMAUG portal password"
 
@@ -54,7 +57,8 @@ def test_email_delivery_fails_closed(monkeypatch) -> None:
     monkeypatch.setattr(email_service, "get_settings", _settings)
 
     class BrokenClient:
-        def begin_send(self, _message: dict):
+        def begin_send(self, _message: dict, *, polling: bool):
+            assert polling is False
             raise RuntimeError("delivery unavailable")
 
     monkeypatch.setattr(email_service, "_client", BrokenClient)
