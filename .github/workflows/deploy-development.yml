@@ -131,10 +131,15 @@ jobs:
           (cd frontend && npm ci && npm run build && cd dist && zip -r ../../frontend.zip .)
 
       - name: Deploy API
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: ${{ env.API_APP_NAME }}
-          package: backend.zip
+        run: >-
+          az webapp deploy
+          --resource-group rg_mmaug_high_school
+          --name "$API_APP_NAME"
+          --src-path backend.zip
+          --type zip
+          --clean true
+          --restart true
+          --track-status true
       - name: Deploy frontend
         uses: azure/webapps-deploy@v3
         with:
