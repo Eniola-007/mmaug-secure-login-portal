@@ -24,6 +24,20 @@ class UserUpdate(BaseModel):
     is_active: bool | None = None
 
 
+class UserInvitationCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    display_name: str = Field(min_length=2, max_length=160)
+    email: EmailStr
+    role: Role
+
+
+class UserInvitationRead(BaseModel):
+    status: str
+    message: str
+    user: UserRead
+
+
 class LocalRegistrationRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

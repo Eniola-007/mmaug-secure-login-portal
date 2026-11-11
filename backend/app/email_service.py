@@ -167,3 +167,47 @@ def send_admin_verification_alert(
         </div>
         """,
     )
+
+
+def send_school_invitation_email(
+    recipient: str,
+    display_name: str,
+    role: str,
+    token: str | None = None,
+    query_parameter: str | None = None,
+) -> bool:
+    settings = get_settings()
+    portal_home = settings.public_frontend_url.rstrip("/")
+    portal_url = portal_home
+    if token and query_parameter:
+        portal_url = f"{portal_url}?{urlencode({query_parameter: token})}"
+    safe_name = html.escape(display_name)
+    safe_role = html.escape(role.title())
+    safe_portal_url = html.escape(portal_url, quote=True)
+    safe_portal_home = html.escape(portal_home, quote=True)
+    action_label = "Accept invitation" if token else "Open school portal"
+    microsoft_option = (
+        f'<p>Prefer Microsoft? <a href="{safe_portal_home}" style="color:#285f50">'
+        "Open the portal and continue with Microsoft</a> using this invited email address.</p>"
+        if token
+        else ""
+    )
+    return _send(
+        recipient=recipient,
+        display_name=display_name,
+        subject="You're invited to join MMAUG High School",
+        html_body=f"""
+        <div style="font-family:Arial,sans-serif;color:#18352c;line-height:1.6">
+          <h1 style="color:#0d382d">Welcome to MMAUG High School</h1>
+          <p>Hello {safe_name},</p>
+          <p>A school administrator invited you to the secure portal with the
+          <strong>{safe_role}</strong> database role.</p>
+          <p><a href="{safe_portal_url}" style="background:#cf963c;color:#fff;padding:12px 18px;
+          border-radius:8px;text-decoration:none;font-weight:bold">{action_label}</a></p>
+          {microsoft_option}
+          <p>Your role does not become active automatically. Complete identity verification,
+          then wait for a school administrator to approve portal access.</p>
+          <p>If you do not recognize this invitation, ignore it and contact the school.</p>
+        </div>
+        """,
+    )

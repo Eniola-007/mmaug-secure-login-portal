@@ -3,7 +3,7 @@ import { useMsal } from "@azure/msal-react";
 import { apiRequest, publicApiRequest } from "./api";
 import { authConfigured, devAuthEnabled, loginRequest } from "./auth";
 import mmaugLogo from "./assets/mmaug-logo.png";
-import type { AuditEvent, DashboardData, PortalUser, Role } from "./types";
+import type { AuditEvent, DashboardData, InvitationResponse, PortalUser, Role } from "./types";
 
 const demoUsers = [
   "student1@mmaug.example", "student2@mmaug.example", "student3@mmaug.example",
@@ -212,6 +212,12 @@ export default function App() {
   const [authError, setAuthError] = useState("");
   const [accessMessage, setAccessMessage] = useState("");
   const [resetToken, setResetToken] = useState("");
+  const [inviteName, setInviteName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<Role>("student");
+  const [inviteBusy, setInviteBusy] = useState(false);
+  const [reinviteBusyId, setReinviteBusyId] = useState("");
+  const [inviteMessage, setInviteMessage] = useState("");
   const recoveryHandled = useRef(false);
 
   const callApi = useCallback(<T,>(path: string, init?: RequestInit) => apiRequest<T>(path, account, devUser, localToken, init), [account, devUser, localToken]);
@@ -320,6 +326,37 @@ export default function App() {
     catch (caught) { setError(caught instanceof Error ? caught.message : "Unable to update this account"); }
   }
 
+  async function inviteUser(event: FormEvent) {
+    event.preventDefault();
+    setInviteBusy(true); setInviteMessage(""); setError("");
+    try {
+      const response = await callApi<InvitationResponse>("/api/users/invitations", {
+        method: "POST",
+        body: JSON.stringify({ display_name: inviteName, email: inviteEmail, role: inviteRole }),
+      });
+      setUsers((items) => [...items, response.user].sort((a, b) => a.display_name.localeCompare(b.display_name)));
+      setInviteMessage(response.message);
+      setInviteName(""); setInviteEmail(""); setInviteRole("student");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to send this invitation");
+    } finally {
+      setInviteBusy(false);
+    }
+  }
+
+  async function reinviteUser(user: PortalUser) {
+    setReinviteBusyId(user.id); setInviteMessage(""); setError("");
+    try {
+      const response = await callApi<InvitationResponse>(`/api/users/${user.id}/reinvite`, { method: "POST" });
+      setUsers((items) => items.map((item) => item.id === response.user.id ? response.user : item));
+      setInviteMessage(response.message);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to re-send this invitation");
+    } finally {
+      setReinviteBusyId("");
+    }
+  }
+
   async function askAgent(event: FormEvent) {
     event.preventDefault();
     const question = agentMessage.trim();
@@ -345,7 +382,24 @@ export default function App() {
         <header className="topbar"><div><p className="eyebrow">{new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }).toUpperCase()}</p><h2>Welcome, {currentUser.display_name.split(" ")[0]}</h2></div><div className="account-area">{devAuthEnabled && <label className="dev-switcher">Demo identity<select value={devUser} onChange={(event) => setDevUser(event.target.value)}>{demoUsers.map((email) => <option key={email}>{email}</option>)}</select></label>}<button className="icon-button" aria-label="Notifications"><PortalIcon name="bell" /></button><div className="user-chip"><span>{currentUser.display_name.split(" ").map((part) => part[0]).slice(0, 2).join("")}</span><div><strong>{currentUser.display_name}</strong><small>{experience?.label}</small></div></div>{!devAuthEnabled && <button className="quiet" onClick={signOut}>Sign out</button>}</div></header>
         {devAuthEnabled && <div className="dev-banner">Development authentication is active. Never enable this setting in UAT or production.</div>}{error && <div className="error-banner" role="alert">{error}</div>}{loading && <div className="loading">Checking your access…</div>}
         {!loading && view === "dashboard" && dashboard && experience && <section className="dashboard-page"><div className="dashboard-hero"><div className="dashboard-hero-copy"><span className={`role-pill ${currentUser.role}`}>{currentUser.role}</span><h1>{experience.greeting}</h1><p>{experience.focus}</p><button onClick={() => setAssistantOpen(true)}>Ask your assistant <ArrowIcon /></button></div><div className="dashboard-seal"><div><img src={mmaugLogo} alt="" /><span>SECURE<br />PORTAL</span></div></div></div><div className="metric-grid">{experience.metrics.map((metric) => <article key={metric.label}><strong>{metric.value}</strong><span>{metric.label}</span></article>)}</div><div className="dashboard-columns"><section className="workspace-section"><div className="section-title"><div><p className="eyebrow">YOUR WORKSPACE</p><h2>{dashboard.title}</h2></div><span>Assigned from PostgreSQL</span></div><div className="action-grid">{dashboard.actions.map((action, index) => <article key={action.title}><span className="action-index">0{index + 1}</span><div className="action-icon"><PortalIcon name={index === 0 ? "people" : index === 1 ? "home" : "bell"} /></div><h3>{action.title}</h3><p>{action.description}</p><button aria-label={`Open ${action.title}`}><ArrowIcon /></button></article>)}</div></section><aside className="today-panel"><div className="section-title"><div><p className="eyebrow">A GOOD PLACE TO START</p><h2>Today</h2></div><span className="today-date">{new Date().getDate()}</span></div><div className="agenda-list">{experience.agenda.map((item) => <article key={item.title}><span>{item.time}</span><div><strong>{item.title}</strong><small>{item.meta}</small></div></article>)}</div></aside></div><section className="assistant-banner"><div className="assistant-avatar"><PortalIcon name="spark" /></div><div><p className="eyebrow light">MMAUG ASSISTANT</p><h2>What would you like help with?</h2><p>I use approved guidance for your {currentUser.role} role and stay inside the school’s guardrails.</p></div><div className="assistant-suggestions">{dashboard.suggested_questions.map((question) => <button key={question} onClick={() => askSuggested(question)}>{question}<ArrowIcon /></button>)}</div></section></section>}
-        {currentUser.role === "admin" && view === "people" && <section className="panel"><div className="section-heading"><div><p className="eyebrow">ADMINISTRATION</p><h1>People & access</h1><p>Approve verified registrations and assign the only role the API will trust.</p></div><span>{users.length} accounts</span></div><div className="table-wrap"><table><thead><tr><th>Person</th><th>Database role</th><th>Identity</th><th>Access</th><th>Controls</th></tr></thead><tbody>{users.map((user) => { const emailReady = user.identity_provider === "microsoft" || Boolean(user.email_verified_at); return <tr key={user.id}><td><strong>{user.display_name}</strong><small>{user.email}</small></td><td><span className={`role-pill ${user.role}`}>{user.role}</span></td><td><span className={`access-status ${emailReady ? "approved" : "pending"}`}>{user.identity_provider === "microsoft" ? "Microsoft verified" : emailReady ? "Email verified" : "Email not verified"}</span></td><td><span className={`access-status ${user.is_active ? "approved" : "pending"}`}>{user.is_active ? "Approved" : "Pending / inactive"}</span></td><td className="controls"><select aria-label={`Role for ${user.display_name}`} value={user.role} disabled={!emailReady} title={!emailReady ? "Email verification is required first" : ""} onChange={(event) => void updateUser(user, { role: event.target.value as Role })}><option value="student">Student</option><option value="teacher">Teacher</option><option value="admin">Administrator</option></select><button className="quiet" disabled={!user.is_active && !emailReady} title={!emailReady ? "Email verification is required first" : ""} onClick={() => void updateUser(user, { is_active: !user.is_active })}>{user.is_active ? "Deactivate" : "Approve & activate"}</button></td></tr>; })}</tbody></table></div></section>}
+        {currentUser.role === "admin" && view === "people" && <section className="panel people-panel">
+          <div className="section-heading"><div><p className="eyebrow">ADMINISTRATION</p><h1>People & access</h1><p>Invite school members, monitor verification, and approve the database role the API will trust.</p></div><span>{users.length} accounts</span></div>
+          <section className="invite-card" aria-labelledby="invite-heading">
+            <div className="invite-card-copy"><span className="invite-icon"><PortalIcon name="people" /></span><div><p className="eyebrow">NEW SCHOOL MEMBER</p><h2 id="invite-heading">Send a secure invitation</h2><p>Choose the intended role now. The account stays inactive until the person accepts the one-time email link and an Administrator approves access.</p></div></div>
+            <form className="invite-form" onSubmit={(event) => void inviteUser(event)}>
+              <label>Full name<input value={inviteName} onChange={(event) => setInviteName(event.target.value)} minLength={2} maxLength={160} autoComplete="name" required placeholder="Student or staff name" /></label>
+              <label>Email address<input type="email" value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} autoComplete="email" required placeholder="person@example.com" /></label>
+              <label>Database role<select value={inviteRole} onChange={(event) => setInviteRole(event.target.value as Role)}><option value="student">Student</option><option value="teacher">Teacher</option><option value="admin">Administrator</option></select></label>
+              <button className="primary" type="submit" disabled={inviteBusy}>{inviteBusy ? "Sending…" : "Send invitation"}<ArrowIcon /></button>
+            </form>
+            {inviteMessage && <div className="invite-success" role="status"><PortalIcon name="shield" /><span>{inviteMessage}</span></div>}
+          </section>
+          <div className="member-list-heading"><div><h2>School members</h2><p>Re-send rotates an unused setup or verification link. Active members receive a secure portal reminder.</p></div><span>{users.filter((user) => !user.is_active).length} awaiting access</span></div>
+          <div className="table-wrap"><table><thead><tr><th>Person</th><th>Database role</th><th>Identity</th><th>Access</th><th>Controls</th></tr></thead><tbody>{users.map((user) => {
+            const emailReady = user.identity_provider === "microsoft" || Boolean(user.email_verified_at);
+            return <tr key={user.id}><td><strong>{user.display_name}</strong><small>{user.email}</small></td><td><span className={`role-pill ${user.role}`}>{user.role}</span></td><td><span className={`access-status ${emailReady ? "approved" : "pending"}`}>{user.identity_provider === "microsoft" ? "Microsoft verified" : emailReady ? "Email verified" : "Awaiting email acceptance"}</span></td><td><span className={`access-status ${user.is_active ? "approved" : "pending"}`}>{user.is_active ? "Approved" : emailReady ? "Ready for approval" : "Invitation pending"}</span></td><td className="controls"><select aria-label={`Role for ${user.display_name}`} value={user.role} disabled={!emailReady} title={!emailReady ? "Email verification is required first" : ""} onChange={(event) => void updateUser(user, { role: event.target.value as Role })}><option value="student">Student</option><option value="teacher">Teacher</option><option value="admin">Administrator</option></select><button className="quiet" disabled={!user.is_active && !emailReady} title={!emailReady ? "Email verification is required first" : ""} onClick={() => void updateUser(user, { is_active: !user.is_active })}>{user.is_active ? "Deactivate" : "Approve & activate"}</button><button className="quiet invite-again" disabled={reinviteBusyId === user.id} onClick={() => void reinviteUser(user)}>{reinviteBusyId === user.id ? "Sending…" : "Re-send invite"}</button></td></tr>;
+          })}</tbody></table></div>
+        </section>}
         {currentUser.role === "admin" && view === "audit" && <section className="panel"><div className="section-heading"><div><p className="eyebrow">SECURITY</p><h1>Audit activity</h1><p>Registration requests and access changes are recorded here.</p></div><span>Latest {events.length}</span></div><div className="event-list">{events.map((event) => <article key={event.id}><span className={`outcome ${event.outcome}`} /><div><strong>{event.action.replaceAll(".", " ")}</strong><p>{new Date(event.occurred_at).toLocaleString()} · {event.target_type ?? "portal"}</p></div></article>)}</div></section>}
       </main>
       <button className="assistant-launcher signed-in" type="button" aria-expanded={assistantOpen} aria-controls="role-assistant-drawer" onClick={() => setAssistantOpen(true)}><PortalIcon name="spark" /><span>Ask MMAUG</span></button>

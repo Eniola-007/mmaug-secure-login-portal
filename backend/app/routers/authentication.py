@@ -24,6 +24,7 @@ from app.email_service import (
     send_microsoft_registration_email,
     send_password_reset_email,
     send_password_setup_email,
+    send_school_invitation_email,
     send_verification_email,
 )
 from app.models import (
@@ -125,6 +126,61 @@ def _issue_password_setup(db: Session, user: User) -> bool:
     )
     db.commit()
     return send_password_setup_email(user.email, user.display_name, raw_token)
+
+
+def issue_school_invitation(db: Session, user: User) -> bool:
+    """Send a role-specific invite and rotate any outstanding one-time token."""
+    now = datetime.now(UTC)
+    if user.entra_object_id or user.email_verified_at:
+        return send_school_invitation_email(
+            user.email,
+            user.display_name,
+            user.role.value,
+        )
+
+    raw_token = secrets.token_urlsafe(32)
+    if user.local_credential:
+        db.execute(
+            update(EmailVerificationToken)
+            .where(
+                EmailVerificationToken.user_id == user.id,
+                EmailVerificationToken.consumed_at.is_(None),
+            )
+            .values(consumed_at=now)
+        )
+        db.add(
+            EmailVerificationToken(
+                user_id=user.id,
+                token_digest=_token_digest(raw_token),
+                expires_at=now + timedelta(minutes=get_settings().email_verification_minutes),
+            )
+        )
+        query_parameter = "verify_email"
+    else:
+        db.execute(
+            update(PasswordResetToken)
+            .where(
+                PasswordResetToken.user_id == user.id,
+                PasswordResetToken.consumed_at.is_(None),
+            )
+            .values(consumed_at=now)
+        )
+        db.add(
+            PasswordResetToken(
+                user_id=user.id,
+                token_digest=_token_digest(raw_token),
+                expires_at=now + timedelta(minutes=get_settings().password_reset_minutes),
+            )
+        )
+        query_parameter = "reset_password"
+    db.commit()
+    return send_school_invitation_email(
+        user.email,
+        user.display_name,
+        user.role.value,
+        raw_token,
+        query_parameter,
+    )
 
 
 def _queue_admin_verification_alerts(
@@ -272,31 +328,53 @@ def register_microsoft_account(
             status_code=422,
             detail="Microsoft did not provide a usable email address for registration",
         ) from exc
-    if db.scalar(select(User).where(User.email == email)):
+    user = db.scalar(select(User).where(User.email == email))
+    invitation_accepted = bool(
+        user and not user.entra_object_id and not user.local_credential and not user.is_active
+    )
+    if user and not invitation_accepted:
         raise HTTPException(
             status_code=409,
             detail="This email is already registered. Ask an administrator to link the account.",
         )
-
-    user = User(
-        entra_tenant_id=tenant_id,
-        entra_object_id=object_id,
-        email=email,
-        display_name=_normalise_name(str(claims.get("name") or email.split("@", maxsplit=1)[0])),
-        role=Role.STUDENT,
-        is_active=False,
-        email_verified_at=datetime.now(UTC),
-    )
-    db.add(user)
+    if user:
+        user.entra_tenant_id = tenant_id
+        user.entra_object_id = object_id
+        user.email_verified_at = datetime.now(UTC)
+        db.execute(
+            update(PasswordResetToken)
+            .where(
+                PasswordResetToken.user_id == user.id,
+                PasswordResetToken.consumed_at.is_(None),
+            )
+            .values(consumed_at=datetime.now(UTC))
+        )
+    else:
+        user = User(
+            entra_tenant_id=tenant_id,
+            entra_object_id=object_id,
+            email=email,
+            display_name=_normalise_name(
+                str(claims.get("name") or email.split("@", maxsplit=1)[0])
+            ),
+            role=Role.STUDENT,
+            is_active=False,
+            email_verified_at=datetime.now(UTC),
+        )
+        db.add(user)
     db.commit()
     db.refresh(user)
     record_event(
         db,
-        action="user.registration_requested",
+        action=(
+            "user.invitation_accepted"
+            if invitation_accepted
+            else "user.registration_requested"
+        ),
         target_type="user",
         target_id=user.id,
         correlation_id=request.headers.get("X-Correlation-ID"),
-        details={"provider": "microsoft", "requested_role": "student"},
+        details={"provider": "microsoft", "requested_role": user.role.value},
     )
     delivered = send_microsoft_registration_email(user.email, user.display_name)
     if not delivered:

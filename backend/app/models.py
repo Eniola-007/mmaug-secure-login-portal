@@ -59,7 +59,7 @@ class User(Base):
 
     @property
     def identity_provider(self) -> str:
-        return "local" if self.local_credential else "microsoft"
+        return "microsoft" if self.entra_object_id else "local"
 
 
 class LocalCredential(Base):

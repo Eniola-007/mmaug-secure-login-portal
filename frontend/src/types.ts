@@ -11,6 +11,12 @@ export interface PortalUser {
   created_at: string;
 }
 
+export interface InvitationResponse {
+  status: "sent" | "delivery_failed";
+  message: string;
+  user: PortalUser;
+}
+
 export interface DashboardData {
   role: Role;
   title: string;

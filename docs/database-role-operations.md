@@ -33,6 +33,22 @@ the account; the Administrator must still review and activate it in **People & a
 The API rejects role assignment or activation for an unverified local account. Use
 Administrator only for authorized staff who may approve users and change roles.
 
+## Invite or re-invite a school member
+
+1. Open **People & access** and complete **Send a secure invitation**.
+2. Enter the person's name and email, then select Student, Teacher, or Administrator.
+3. Select **Send invitation**. The database record is created inactive and an audited,
+   one-time setup link is emailed through Azure Communication Services.
+   The recipient may accept with a local password or a validated Microsoft identity using
+   the same invited email; either path preserves the role selected by the Administrator.
+4. If the invitation is lost or expires, select **Re-send invite** beside that account.
+   Re-sending invalidates an unused local setup or verification link before issuing another.
+5. After the person accepts the invitation, confirm **Email verified**, then select
+   **Approve & activate**. The selected database role is preserved throughout this process.
+
+Only an authenticated database Administrator can invite or re-invite people. Invitation
+delivery is rate-limited and every send attempt is recorded in **Audit activity**.
+
 ## SQL reference for an authorized private-network operator
 
 Do not enable PostgreSQL public access just to run these queries. If an approved operator

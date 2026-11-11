@@ -147,6 +147,9 @@ is stored in GitHub or sent to the browser.
 - Active database Administrators receive an email alert when a local user verifies their
   mailbox, a pre-enrolled user completes password setup, or a new Microsoft identity is
   registered. The alert links back to **People & access** for the role decision.
+- Administrators can invite a new school member with a Student, Teacher, or Administrator
+  database role from **People & access**. The inactive record receives a one-time setup
+  email, and **Re-send invite** rotates unused setup or verification links.
 - Administrators cannot assign a different database role or activate a local account until
   email verification is complete.
 - Password reset increments the account authentication version, revoking older local JWTs.
