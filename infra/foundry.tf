@@ -54,8 +54,4 @@ resource "azurerm_cognitive_deployment" "gpt_5_4_mini" {
 
 locals {
   foundry_project_endpoint = "https://${azurerm_cognitive_account.foundry.custom_subdomain_name}.services.ai.azure.com/api/projects/${azurerm_cognitive_account_project.portal.name}"
-  foundry_public_agent     = trimspace(var.azure_ai_public_agent_id) != "" ? var.azure_ai_public_agent_id : "mmaug-visitor"
-  foundry_student_agent    = trimspace(var.azure_ai_student_agent_id) != "" ? var.azure_ai_student_agent_id : "mmaug-student"
-  foundry_teacher_agent    = trimspace(var.azure_ai_teacher_agent_id) != "" ? var.azure_ai_teacher_agent_id : "mmaug-teacher"
-  foundry_admin_agent      = trimspace(var.azure_ai_admin_agent_id) != "" ? var.azure_ai_admin_agent_id : "mmaug-administrator"
 }

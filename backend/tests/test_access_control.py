@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 from conftest import ADMIN, STUDENT, TEACHER
 from fastapi.testclient import TestClient
 
@@ -272,6 +274,38 @@ def test_agent_safe_fallback_is_role_specific(client: TestClient) -> None:
     assert response.status_code == 200
     assert response.json()["mode"] == "safe-demo"
     assert "student service" in response.json()["response"]
+
+
+def test_authenticated_agent_uses_foundry_with_database_role(
+    client: TestClient, monkeypatch
+) -> None:
+    foundry_calls: list[tuple[str, str]] = []
+
+    def fake_ask_foundry(audience: str, prompt: str) -> str:
+        foundry_calls.append((audience, prompt))
+        return "Foundry grounded answer."
+
+    monkeypatch.setattr(
+        "app.routers.agents.get_settings",
+        lambda: SimpleNamespace(azure_openai_endpoint="https://foundry.example"),
+    )
+    monkeypatch.setattr("app.routers.agents._ask_foundry", fake_ask_foundry)
+
+    response = client.post(
+        "/api/agent/message",
+        headers=STUDENT,
+        json={"message": "Where can I find approved study resources?"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["mode"] == "foundry"
+    assert response.json()["role"] == "student"
+    assert response.json()["response"] == "Foundry grounded answer."
+    assert len(foundry_calls) == 1
+    audience, prompt = foundry_calls[0]
+    assert audience == "student"
+    assert "Authenticated PostgreSQL portal role: student." in prompt
+    assert "Where can I find approved study resources?" in prompt
 
 
 def test_public_agent_welcomes_visitors_without_authentication(client: TestClient) -> None:

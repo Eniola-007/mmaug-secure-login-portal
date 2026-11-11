@@ -1,9 +1,10 @@
 # MMAUG High School secure portal
 
 The MMAUG High School secure portal is a role-aware online service for students,
-teachers, and administrators. Microsoft sign-in verifies identity. Signing in does not
-automatically grant portal access: an administrator must enroll the account, and the
-portal role is read from PostgreSQL on every protected request.
+teachers, and administrators. Local verified-email sign-in is active for the demonstration;
+Microsoft sign-in remains an administrator handoff item. Signing in does not automatically
+grant portal access: an administrator must enroll the account, and the portal role is read
+from PostgreSQL on every protected request.
 
 The portal provides a role-specific dashboard, approved school guidance, account
 recovery links, and a role-aware assistant. The assistant explains portal navigation and
