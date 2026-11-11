@@ -14,8 +14,8 @@ Educational development MVP for RFP `MMAUG-AIDB-RFP-002`.
 - Public React + TypeScript landing page with Microsoft and email/password account paths
 - FastAPI protected API with server-side role and account-status checks
 - PostgreSQL application profiles and append-only audit events
-- Microsoft Foundry project/model and curated Azure Blob knowledge base, with
-  deterministic pre-model guardrails and a safe fallback while runtime RBAC is completed
+- Microsoft Foundry `gpt-5.4-mini` assistant through managed identity, with reviewed
+  role-scoped knowledge, deterministic pre-model guardrails and a safe outage fallback
 - Azure App Service Plan, private PostgreSQL, VNet/private DNS, Key Vault, Azure
   Communication Services, Application Insights, and one approved user-assigned identity
 - Terraform infrastructure and GitHub Actions deployment through OIDC
@@ -37,6 +37,8 @@ The MVP contains synthetic data only. It is not approved for real student data.
 The application role comes from PostgreSQL after token validation. The frontend never
 selects the authorization role, and the assistant receives only the role chosen by the
 API. Reviewed assistant source material is in [`knowledge-base`](knowledge-base).
+The implementation and update procedure are documented in
+[the Foundry assistant and knowledge-base guide](docs/ai-assistant-and-knowledge-base.md).
 
 Self-registration never accepts a role. All new requests start as inactive Student
 records; only the Administrator dashboard can activate an account or assign Teacher or

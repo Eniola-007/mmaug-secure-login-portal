@@ -3,7 +3,8 @@
 Students can use the portal to reach their own profile, approved learning resources,
 school announcements, and student support guidance. A student can ask the assistant how
 to navigate the portal, organize study, find an approved resource, understand a general
-school process, or recover access to a Microsoft account.
+school process, or recover access to a local portal account. Microsoft account recovery
+uses Microsoft's official recovery service when Microsoft sign-in is enabled.
 
 The student assistant cannot retrieve another student's information, disclose grades or
 attendance, change enrollment, submit work, or contact people on the student's behalf.

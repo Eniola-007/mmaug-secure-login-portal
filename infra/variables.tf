@@ -49,40 +49,10 @@ variable "entra_spa_client_id" {
   default     = "00000000-0000-0000-0000-000000000000"
 }
 
-variable "azure_ai_project_endpoint" {
-  description = "Microsoft Foundry project endpoint. Empty keeps the guarded local assistant fallback active."
-  type        = string
-  default     = ""
-}
-
 variable "azure_ai_model_deployment_name" {
-  description = "Approved Microsoft Foundry model deployment used by the role agents."
+  description = "Approved Microsoft Foundry model deployment used by the role assistant."
   type        = string
   default     = "gpt-5.4-mini"
-}
-
-variable "azure_ai_public_agent_id" {
-  description = "Versioned Foundry prompt-agent name for unauthenticated visitor guidance."
-  type        = string
-  default     = ""
-}
-
-variable "azure_ai_student_agent_id" {
-  description = "Versioned Foundry prompt-agent name for the student experience."
-  type        = string
-  default     = ""
-}
-
-variable "azure_ai_teacher_agent_id" {
-  description = "Versioned Foundry prompt-agent name for the teacher experience."
-  type        = string
-  default     = ""
-}
-
-variable "azure_ai_admin_agent_id" {
-  description = "Versioned Foundry prompt-agent name for the administrator experience."
-  type        = string
-  default     = ""
 }
 
 variable "azure_ad_client_id" {

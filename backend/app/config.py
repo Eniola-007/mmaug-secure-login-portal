@@ -32,12 +32,8 @@ class Settings(BaseSettings):
     azure_ad_client_id: str = ""
     azure_ad_client_secret: SecretStr = SecretStr("")
     azure_ad_tenant_id: str = ""
-    azure_ai_project_endpoint: str = ""
+    azure_openai_endpoint: str = ""
     azure_ai_model_deployment_name: str = "gpt-5.4-mini"
-    azure_ai_public_agent_id: str = ""
-    azure_ai_student_agent_id: str = ""
-    azure_ai_teacher_agent_id: str = ""
-    azure_ai_admin_agent_id: str = ""
     knowledge_base_storage_url: str = ""
     knowledge_base_container: str = "knowledge-base"
 

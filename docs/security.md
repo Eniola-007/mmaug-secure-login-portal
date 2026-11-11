@@ -23,10 +23,10 @@
 - The role-specific AI endpoint selects the role on the server. An LLM is never an authorization layer.
 - The API rejects prompt overrides, secret requests, cross-user records, and privileged
   action requests before calling Foundry.
-- Foundry is configured to use the App Service managed identity and a curated private
-  knowledge base. Until effective **Foundry User** RBAC is verified, requests fail closed
-  into the constrained safe fallback. The model receives no credentials, raw database
-  access or state-changing tools.
+- Foundry is configured to use the App Service managed identity and reviewed role-scoped
+  knowledge. The identity has effective **Foundry User** and **Azure AI Developer** on the
+  Foundry account. The model receives no credentials, raw database access or
+  state-changing tools; requests fail safely into a constrained fallback during outages.
 - When the administrator-approved Foundry service principal is enabled, its client secret
   is a write-only Terraform input stored in Key Vault; the Web App setting is a Key Vault
   reference and the GitHub workflow continues to deploy through managed-identity OIDC.
