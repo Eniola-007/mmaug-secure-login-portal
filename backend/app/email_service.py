@@ -115,3 +115,55 @@ def send_password_setup_email(recipient: str, display_name: str, token: str) -> 
         </div>
         """,
     )
+
+
+def send_microsoft_registration_email(recipient: str, display_name: str) -> bool:
+    settings = get_settings()
+    safe_name = html.escape(display_name)
+    safe_portal_url = html.escape(settings.public_frontend_url.rstrip("/"), quote=True)
+    return _send(
+        recipient=recipient,
+        display_name=display_name,
+        subject="Your MMAUG portal request was received",
+        html_body=f"""
+        <div style="font-family:Arial,sans-serif;color:#18352c;line-height:1.6">
+          <h1 style="color:#0d382d">Microsoft identity confirmed</h1>
+          <p>Hello {safe_name},</p>
+          <p>Your Microsoft identity is verified and your MMAUG portal request was received.
+          A school administrator must still approve and assign your database role.</p>
+          <p><a href="{safe_portal_url}" style="background:#cf963c;color:#fff;padding:12px 18px;
+          border-radius:8px;text-decoration:none;font-weight:bold">Return to the portal</a></p>
+          <p>If you did not request this account, contact an authorized school administrator.</p>
+        </div>
+        """,
+    )
+
+
+def send_admin_verification_alert(
+    recipient: str,
+    admin_name: str,
+    verified_name: str,
+    verified_email: str,
+) -> bool:
+    settings = get_settings()
+    safe_admin_name = html.escape(admin_name)
+    safe_verified_name = html.escape(verified_name)
+    safe_verified_email = html.escape(verified_email)
+    safe_portal_url = html.escape(settings.public_frontend_url.rstrip("/"), quote=True)
+    return _send(
+        recipient=recipient,
+        display_name=admin_name,
+        subject="MMAUG account verified and ready for review",
+        html_body=f"""
+        <div style="font-family:Arial,sans-serif;color:#18352c;line-height:1.6">
+          <h1 style="color:#0d382d">Account ready for administrator review</h1>
+          <p>Hello {safe_admin_name},</p>
+          <p>{safe_verified_name} ({safe_verified_email}) has completed identity verification.
+          The account is ready for a database-role decision in
+          <strong>People &amp; access</strong>.</p>
+          <p><a href="{safe_portal_url}" style="background:#cf963c;color:#fff;padding:12px 18px;
+          border-radius:8px;text-decoration:none;font-weight:bold">Review account</a></p>
+          <p>Approve only recognized school users and assign the minimum required role.</p>
+        </div>
+        """,
+    )

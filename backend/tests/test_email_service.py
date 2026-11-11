@@ -39,15 +39,28 @@ def test_verification_and_reset_messages_use_secure_frontend_links(monkeypatch) 
     assert email_service.send_verification_email("learner@example.com", "A <Learner>", "v&x")
     assert email_service.send_password_reset_email("learner@example.com", "A Learner", "r&x")
     assert email_service.send_password_setup_email("learner@example.com", "A Learner", "s&x")
+    assert email_service.send_microsoft_registration_email("learner@example.com", "A Learner")
+    assert email_service.send_admin_verification_alert(
+        "admin@example.com",
+        "An Admin",
+        "A <Learner>",
+        "learner@example.com",
+    )
 
-    assert len(client.messages) == 3
+    assert len(client.messages) == 5
     assert "verify_email=v%26x" in client.messages[0]["content"]["html"]
     assert "A &lt;Learner&gt;" in client.messages[0]["content"]["html"]
     assert "reset_password=r%26x" in client.messages[1]["content"]["html"]
     assert client.messages[0]["senderAddress"] == "donotreply@example.azurecomm.net"
-    assert client.polling_values == [False, False, False]
+    assert client.polling_values == [False, False, False, False, False]
     assert "reset_password=s%26x" in client.messages[2]["content"]["html"]
     assert client.messages[2]["content"]["subject"] == "Set up your MMAUG portal password"
+    assert client.messages[3]["content"]["subject"] == "Your MMAUG portal request was received"
+    assert (
+        client.messages[4]["content"]["subject"]
+        == "MMAUG account verified and ready for review"
+    )
+    assert "A &lt;Learner&gt;" in client.messages[4]["content"]["html"]
 
 
 def test_email_delivery_fails_closed(monkeypatch) -> None:

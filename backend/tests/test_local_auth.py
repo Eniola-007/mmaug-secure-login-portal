@@ -40,9 +40,16 @@ def test_local_registration_is_pending_and_cannot_choose_role(client: TestClient
 def test_approved_local_user_receives_database_role(client: TestClient, monkeypatch) -> None:
     password = "A-safe-teacher-passphrase-2026"
     verification: dict[str, str] = {}
+    administrator_alerts: list[tuple[str, str]] = []
     monkeypatch.setattr(
         "app.routers.authentication.send_verification_email",
         lambda _email, _name, token: verification.update(token=token) or True,
+    )
+    monkeypatch.setattr(
+        "app.routers.authentication.send_admin_verification_alert",
+        lambda recipient, _admin_name, _verified_name, verified_email: (
+            administrator_alerts.append((recipient, verified_email)) or True
+        ),
     )
     client.post(
         "/api/auth/register",
@@ -82,6 +89,9 @@ def test_approved_local_user_receives_database_role(client: TestClient, monkeypa
     )
     assert verified.status_code == 200
     assert verified.json()["status"] == "verified_pending_approval"
+    assert administrator_alerts == [
+        ("admin@mmaug.example", "new.teacher@example.com")
+    ]
 
     approved = client.patch(
         f"/api/users/{created['id']}",

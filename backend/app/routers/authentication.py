@@ -2,10 +2,10 @@ import hashlib
 import secrets
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials
 from pydantic import EmailStr, TypeAdapter
-from sqlalchemy import select, update
+from sqlalchemy import or_, select, update
 from sqlalchemy.orm import Session
 
 from app.audit import record_event
@@ -20,6 +20,8 @@ from app.auth import (
 from app.config import get_settings
 from app.db import get_db
 from app.email_service import (
+    send_admin_verification_alert,
+    send_microsoft_registration_email,
     send_password_reset_email,
     send_password_setup_email,
     send_verification_email,
@@ -125,6 +127,29 @@ def _issue_password_setup(db: Session, user: User) -> bool:
     return send_password_setup_email(user.email, user.display_name, raw_token)
 
 
+def _queue_admin_verification_alerts(
+    db: Session,
+    background_tasks: BackgroundTasks,
+    verified_user: User,
+) -> None:
+    administrators = db.scalars(
+        select(User).where(
+            User.role == Role.ADMIN,
+            User.is_active.is_(True),
+            User.id != verified_user.id,
+            or_(User.email_verified_at.is_not(None), User.entra_object_id.is_not(None)),
+        )
+    ).all()
+    for administrator in administrators:
+        background_tasks.add_task(
+            send_admin_verification_alert,
+            administrator.email,
+            administrator.display_name,
+            verified_user.display_name,
+            verified_user.email,
+        )
+
+
 @router.post("/register", response_model=RegistrationRead, status_code=status.HTTP_201_CREATED)
 def register_local_account(
     registration: LocalRegistrationRequest,
@@ -221,6 +246,7 @@ def login_local_account(
 )
 def register_microsoft_account(
     request: Request,
+    background_tasks: BackgroundTasks,
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
     db: Session = Depends(get_db),
 ) -> RegistrationRead:
@@ -272,13 +298,31 @@ def register_microsoft_account(
         correlation_id=request.headers.get("X-Correlation-ID"),
         details={"provider": "microsoft", "requested_role": "student"},
     )
-    return _pending_response()
+    delivered = send_microsoft_registration_email(user.email, user.display_name)
+    if not delivered:
+        record_event(
+            db,
+            action="email.microsoft_registration_delivery_failed",
+            target_type="user",
+            target_id=user.id,
+            outcome="failure",
+            correlation_id=request.headers.get("X-Correlation-ID"),
+        )
+    _queue_admin_verification_alerts(db, background_tasks, user)
+    return RegistrationRead(
+        status="verified_pending_approval",
+        message=(
+            "Your Microsoft identity is verified. Check your email for confirmation; "
+            "a school administrator must now assign and activate your database role."
+        ),
+    )
 
 
 @router.post("/verify-email", response_model=RegistrationRead)
 def verify_email(
     payload: TokenRequest,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ) -> RegistrationRead:
     enforce_rate_limit(db, request, scope="verify-email", limit=10, window_seconds=3600)
@@ -309,6 +353,7 @@ def verify_email(
         target_id=user.id,
         correlation_id=request.headers.get("X-Correlation-ID"),
     )
+    _queue_admin_verification_alerts(db, background_tasks, user)
     return RegistrationRead(
         status="verified_pending_approval",
         message="Email verified. A school administrator must now approve your portal role.",
@@ -369,6 +414,7 @@ def forgot_password(
 def reset_password(
     payload: PasswordResetRequest,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ) -> RegistrationRead:
     enforce_rate_limit(db, request, scope="reset-password", limit=10, window_seconds=3600)
@@ -408,6 +454,8 @@ def reset_password(
         target_id=user.id,
         correlation_id=request.headers.get("X-Correlation-ID"),
     )
+    if is_setup:
+        _queue_admin_verification_alerts(db, background_tasks, user)
     return RegistrationRead(
         status="password_setup" if is_setup else "password_reset",
         message=(

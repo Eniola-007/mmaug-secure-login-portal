@@ -26,6 +26,10 @@ and Teachers receive HTTP 403.
 5. Open **Audit activity** and confirm `user access updated` was recorded.
 6. Ask the user to sign out and sign in again so a fresh session reflects the new role.
 
+Active Administrators receive an email with subject **MMAUG account verified and ready for
+review** as soon as the account completes verification. The notification does not approve
+the account; the Administrator must still review and activate it in **People & access**.
+
 The API rejects role assignment or activation for an unverified local account. Use
 Administrator only for authorized staff who may approve users and change roles.
 

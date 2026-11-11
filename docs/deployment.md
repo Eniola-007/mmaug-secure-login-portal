@@ -142,6 +142,11 @@ is stored in GitHub or sent to the browser.
 - Every new local signup receives an email-verification message. A pre-enrolled account
   without a local password receives a one-time password-setup message that also verifies
   mailbox ownership.
+- Every new Microsoft signup receives a confirmation email; Microsoft identity ownership
+  is already verified by the validated Entra token, so no second verification link is used.
+- Active database Administrators receive an email alert when a local user verifies their
+  mailbox, a pre-enrolled user completes password setup, or a new Microsoft identity is
+  registered. The alert links back to **People & access** for the role decision.
 - Administrators cannot assign a different database role or activate a local account until
   email verification is complete.
 - Password reset increments the account authentication version, revoking older local JWTs.
