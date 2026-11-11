@@ -37,13 +37,18 @@ def _send(*, recipient: str, display_name: str, subject: str, html_body: str) ->
         },
     }
     try:
-        # The initial 202 response confirms that ACS accepted the message. Do not
-        # hold an interactive authentication request open while ACS polls for the
-        # final mailbox-delivery status, which can take several minutes.
-        _client().begin_send(message, polling=False).result()
+        # A 202 response only means ACS accepted the request. Wait for the final
+        # service result so the portal never tells an administrator that an email
+        # was sent when ACS later rejected the operation.
+        result = _client().begin_send(message).result()
+        delivery_status = str(result.get("status", "")).lower()
+        if delivery_status and delivery_status != "succeeded":
+            logger.error("Azure Communication Services email ended with status %s", delivery_status)
+            return False
     except Exception:  # Azure SDK exceptions vary by transport and service response.
         logger.exception("Azure Communication Services email delivery failed")
         return False
+    logger.info("Azure Communication Services accepted the email for final delivery")
     return True
 
 

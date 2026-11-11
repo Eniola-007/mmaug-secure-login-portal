@@ -251,6 +251,12 @@ def test_resend_verification_is_generic(client: TestClient, monkeypatch) -> None
         "app.routers.authentication.send_verification_email",
         lambda _email, _name, token: delivered.append(token) or True,
     )
+    monkeypatch.setattr(
+        "app.routers.authentication.send_school_invitation_email",
+        lambda _email, _name, _role, token=None, query_parameter=None: (
+            delivered.append(token or query_parameter or "reminder") or True
+        ),
+    )
     client.post(
         "/api/auth/register",
         json={

@@ -51,6 +51,10 @@ function ArrowIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" /></svg>;
 }
 
+function EducationalCaveat({ compact = false }: { compact?: boolean }) {
+  return <aside className={`educational-caveat${compact ? " compact" : ""}`} aria-label="Educational-use notice"><PortalIcon name="shield" /><p><strong>Bootcamp educational demonstration.</strong> The MMAUG Secure Login Portal is a solution built as part of the Malta Microsoft AI User Group (MMUAG) AI &amp; DevOps Fundamentals Bootcamp 2026. The solution is for demo/educational purposes and not to be adopted as a production-ready system.</p></aside>;
+}
+
 function PortalIcon({ name }: { name: "home" | "spark" | "people" | "audit" | "bell" | "shield" }) {
   const paths = {
     home: <><path d="m3 11 9-7 9 7" /><path d="M5 10v10h14V10M9 20v-6h6v6" /></>,
@@ -103,7 +107,7 @@ function AuthDialog({ mode, onModeChange, onClose, onLocalLogin, onLocalRegister
           {message && <div className="success-message" role="status">{message}</div>}
           {error && <div className="form-error" role="alert">{error}</div>}
           <button className="primary full" type="submit" disabled={busy}>{busy ? "Please wait…" : mode === "signup" ? "Request my account" : mode === "forgot" ? "Send recovery link" : mode === "reset" ? "Reset password" : "Sign in securely"}</button>
-          {mode === "signin" && <div className="auth-secondary-actions"><button className="text-action" type="button" onClick={() => onModeChange("forgot")}>Forgot your local password?</button><button className="text-action" type="button" disabled={!email || busy} onClick={() => void onResendVerification(email)}>Resend verification email</button></div>}
+          {(mode === "signin" || mode === "signup") && <div className="auth-secondary-actions">{mode === "signin" && <button className="text-action" type="button" onClick={() => onModeChange("forgot")}>Forgot your local password?</button>}<button className="text-action" type="button" disabled={!email || busy} onClick={() => void onResendVerification(email)}>Re-send invitation or verification email</button></div>}
           {(mode === "forgot" || mode === "reset") && <button className="text-action" type="button" onClick={() => onModeChange("signin")}>Back to sign in</button>}
         </form>
       </section>
@@ -175,6 +179,7 @@ function PublicLanding({ openAuth, onMicrosoftRegistration, onMicrosoftSignout, 
         <section className="security-section" id="security"><div><p className="eyebrow">SECURITY BY DESIGN</p><h2>Your identity opens the door.<br />The database decides the room.</h2></div><div className="security-steps"><article><span>1</span><div><strong>Choose how to sign in</strong><p>Use a Microsoft account or create a portal account with email and password.</p></div></article><article><span>2</span><div><strong>An administrator approves access</strong><p>New registrations cannot select privileged roles or activate themselves.</p></div></article><article><span>3</span><div><strong>Your dashboard follows your DB role</strong><p>Student, Teacher, and Administrator permissions are enforced by the API.</p></div></article></div></section>
         <section className="closing-cta"><img src={mmaugLogo} alt="" /><p className="eyebrow light">WELCOME TO MMAUG HIGH SCHOOL</p><h2>Ready to begin your school day?</h2><p>Create an account with or without Microsoft. Your administrator will approve the right workspace.</p><div><button className="primary large" onClick={() => openAuth("signup")}>Create your account</button><button className="link-light" onClick={() => openAuth("signin")}>Sign in instead →</button></div></section>
       </main>
+      <EducationalCaveat />
       <footer className="public-footer"><a className="public-brand" href="#top"><img src={mmaugLogo} alt="" /><span>MMAUG <small>HIGH SCHOOL</small></span></a><p>Learn. Innovate. Build.</p><div><a href="https://passwordreset.microsoftonline.com/">Microsoft account recovery</a><span>Secure school portal</span></div></footer>
       <button className="assistant-launcher" type="button" aria-expanded={assistantOpen} aria-controls="visitor-assistant-drawer" onClick={() => setAssistantOpen(true)}><PortalIcon name="spark" /><span>Ask MMAUG</span></button>
       <div className={`assistant-drawer-layer ${assistantOpen ? "open" : ""}`} aria-hidden={!assistantOpen} onMouseDown={(event) => { if (event.target === event.currentTarget) setAssistantOpen(false); }}>
@@ -217,6 +222,7 @@ export default function App() {
   const [inviteRole, setInviteRole] = useState<Role>("student");
   const [inviteBusy, setInviteBusy] = useState(false);
   const [reinviteBusyId, setReinviteBusyId] = useState("");
+  const [deleteBusyId, setDeleteBusyId] = useState("");
   const [inviteMessage, setInviteMessage] = useState("");
   const recoveryHandled = useRef(false);
 
@@ -357,6 +363,21 @@ export default function App() {
     }
   }
 
+  async function deleteUser(user: PortalUser) {
+    const confirmed = window.confirm(`Permanently delete ${user.display_name} (${user.email}) from the portal? This cannot be undone.`);
+    if (!confirmed) return;
+    setDeleteBusyId(user.id); setInviteMessage(""); setError("");
+    try {
+      await callApi<{ status: string; user_id: string }>(`/api/users/${user.id}`, { method: "DELETE" });
+      setUsers((items) => items.filter((item) => item.id !== user.id));
+      setInviteMessage(`${user.display_name} was deleted from portal access.`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to delete this account");
+    } finally {
+      setDeleteBusyId("");
+    }
+  }
+
   async function askAgent(event: FormEvent) {
     event.preventDefault();
     const question = agentMessage.trim();
@@ -377,7 +398,7 @@ export default function App() {
 
   return (
     <div className={`app-shell role-${currentUser.role}`}>
-      <aside className="sidebar"><div className="brand"><img className="brand-logo" src={mmaugLogo} alt="" /><span>MMAUG<br /><small>HIGH SCHOOL</small></span></div><div className="workspace-label"><small>YOUR WORKSPACE</small><strong>{experience?.label}</strong></div><nav aria-label="Portal navigation"><button className={view === "dashboard" ? "active" : ""} onClick={() => void openView("dashboard")}><PortalIcon name="home" /> Overview</button><button className={assistantOpen ? "active" : ""} onClick={() => setAssistantOpen(true)}><PortalIcon name="spark" /> My assistant</button>{currentUser.role === "admin" && <><button className={view === "people" ? "active" : ""} onClick={() => void openView("people")}><PortalIcon name="people" /> People & access</button><button className={view === "audit" ? "active" : ""} onClick={() => void openView("audit")}><PortalIcon name="audit" /> Audit activity</button></>}</nav><div className="sidebar-help"><PortalIcon name="shield" /><div><strong>Protected workspace</strong><small>Access follows your database role.</small></div></div><div className="sidebar-footer"><span className="status-dot" /> Secure session</div></aside>
+      <aside className="sidebar"><div className="brand"><img className="brand-logo" src={mmaugLogo} alt="" /><span>MMAUG<br /><small>HIGH SCHOOL</small></span></div><div className="workspace-label"><small>YOUR WORKSPACE</small><strong>{experience?.label}</strong></div><nav aria-label="Portal navigation"><button className={view === "dashboard" ? "active" : ""} onClick={() => void openView("dashboard")}><PortalIcon name="home" /> Overview</button><button className={assistantOpen ? "active" : ""} onClick={() => setAssistantOpen(true)}><PortalIcon name="spark" /> My assistant</button>{currentUser.role === "admin" && <button className={view === "people" ? "active" : ""} onClick={() => void openView("people")}><PortalIcon name="people" /> People & access</button>}<button className={view === "audit" ? "active" : ""} onClick={() => void openView("audit")}><PortalIcon name="audit" /> {currentUser.role === "admin" ? "Audit activity" : "My activity"}</button></nav><div className="sidebar-help"><PortalIcon name="shield" /><div><strong>Protected workspace</strong><small>Access follows your database role.</small></div></div><div className="sidebar-footer"><span className="status-dot" /> Secure session</div></aside>
       <main className="main-content">
         <header className="topbar"><div><p className="eyebrow">{new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }).toUpperCase()}</p><h2>Welcome, {currentUser.display_name.split(" ")[0]}</h2></div><div className="account-area">{devAuthEnabled && <label className="dev-switcher">Demo identity<select value={devUser} onChange={(event) => setDevUser(event.target.value)}>{demoUsers.map((email) => <option key={email}>{email}</option>)}</select></label>}<button className="icon-button" aria-label="Notifications"><PortalIcon name="bell" /></button><div className="user-chip"><span>{currentUser.display_name.split(" ").map((part) => part[0]).slice(0, 2).join("")}</span><div><strong>{currentUser.display_name}</strong><small>{experience?.label}</small></div></div>{!devAuthEnabled && <button className="quiet" onClick={signOut}>Sign out</button>}</div></header>
         {devAuthEnabled && <div className="dev-banner">Development authentication is active. Never enable this setting in UAT or production.</div>}{error && <div className="error-banner" role="alert">{error}</div>}{loading && <div className="loading">Checking your access…</div>}
@@ -397,10 +418,11 @@ export default function App() {
           <div className="member-list-heading"><div><h2>School members</h2><p>Re-send rotates an unused setup or verification link. Active members receive a secure portal reminder.</p></div><span>{users.filter((user) => !user.is_active).length} awaiting access</span></div>
           <div className="table-wrap"><table><thead><tr><th>Person</th><th>Database role</th><th>Identity</th><th>Access</th><th>Controls</th></tr></thead><tbody>{users.map((user) => {
             const emailReady = user.identity_provider === "microsoft" || Boolean(user.email_verified_at);
-            return <tr key={user.id}><td><strong>{user.display_name}</strong><small>{user.email}</small></td><td><span className={`role-pill ${user.role}`}>{user.role}</span></td><td><span className={`access-status ${emailReady ? "approved" : "pending"}`}>{user.identity_provider === "microsoft" ? "Microsoft verified" : emailReady ? "Email verified" : "Awaiting email acceptance"}</span></td><td><span className={`access-status ${user.is_active ? "approved" : "pending"}`}>{user.is_active ? "Approved" : emailReady ? "Ready for approval" : "Invitation pending"}</span></td><td className="controls"><select aria-label={`Role for ${user.display_name}`} value={user.role} disabled={!emailReady} title={!emailReady ? "Email verification is required first" : ""} onChange={(event) => void updateUser(user, { role: event.target.value as Role })}><option value="student">Student</option><option value="teacher">Teacher</option><option value="admin">Administrator</option></select><button className="quiet" disabled={!user.is_active && !emailReady} title={!emailReady ? "Email verification is required first" : ""} onClick={() => void updateUser(user, { is_active: !user.is_active })}>{user.is_active ? "Deactivate" : "Approve & activate"}</button><button className="quiet invite-again" disabled={reinviteBusyId === user.id} onClick={() => void reinviteUser(user)}>{reinviteBusyId === user.id ? "Sending…" : "Re-send invite"}</button></td></tr>;
+            return <tr key={user.id}><td><strong>{user.display_name}</strong><small>{user.email}</small></td><td><span className={`role-pill ${user.role}`}>{user.role}</span></td><td><span className={`access-status ${emailReady ? "approved" : "pending"}`}>{user.identity_provider === "microsoft" ? "Microsoft verified" : emailReady ? "Email verified" : "Awaiting email acceptance"}</span></td><td><span className={`access-status ${user.is_active ? "approved" : "pending"}`}>{user.is_active ? "Approved" : emailReady ? "Ready for approval" : "Invitation pending"}</span></td><td className="controls"><select aria-label={`Role for ${user.display_name}`} value={user.role} disabled={!emailReady} title={!emailReady ? "Email verification is required first" : ""} onChange={(event) => void updateUser(user, { role: event.target.value as Role })}><option value="student">Student</option><option value="teacher">Teacher</option><option value="admin">Administrator</option></select><button className="quiet" disabled={!user.is_active && !emailReady} title={!emailReady ? "Email verification is required first" : ""} onClick={() => void updateUser(user, { is_active: !user.is_active })}>{user.is_active ? "Deactivate" : "Approve & activate"}</button><button className="quiet invite-again" disabled={reinviteBusyId === user.id} onClick={() => void reinviteUser(user)}>{reinviteBusyId === user.id ? "Sending…" : "Re-send invite"}</button><button className="quiet delete-user" disabled={deleteBusyId === user.id || user.id === currentUser.id} title={user.id === currentUser.id ? "You cannot delete your own administrator account" : `Delete ${user.display_name}`} onClick={() => void deleteUser(user)}>{deleteBusyId === user.id ? "Deleting…" : "Delete"}</button></td></tr>;
           })}</tbody></table></div>
         </section>}
-        {currentUser.role === "admin" && view === "audit" && <section className="panel"><div className="section-heading"><div><p className="eyebrow">SECURITY</p><h1>Audit activity</h1><p>Registration requests and access changes are recorded here.</p></div><span>Latest {events.length}</span></div><div className="event-list">{events.map((event) => <article key={event.id}><span className={`outcome ${event.outcome}`} /><div><strong>{event.action.replaceAll(".", " ")}</strong><p>{new Date(event.occurred_at).toLocaleString()} · {event.target_type ?? "portal"}</p></div></article>)}</div></section>}
+        {view === "audit" && <section className="panel"><div className="section-heading"><div><p className="eyebrow">SECURITY</p><h1>{currentUser.role === "admin" ? "Audit activity" : "My activity"}</h1><p>{currentUser.role === "admin" ? "Registration requests and access changes are recorded here." : "Only activity performed by you or affecting your own account is shown."}</p></div><span>Latest {events.length}</span></div><div className="event-list">{events.length ? events.map((event) => <article key={event.id}><span className={`outcome ${event.outcome}`} /><div><strong>{event.action.replaceAll(".", " ")}</strong><p>{new Date(event.occurred_at).toLocaleString()} · {event.target_type ?? "portal"}</p></div></article>) : <p className="empty-state">No activity has been recorded for this account yet.</p>}</div></section>}
+        <EducationalCaveat compact />
       </main>
       <button className="assistant-launcher signed-in" type="button" aria-expanded={assistantOpen} aria-controls="role-assistant-drawer" onClick={() => setAssistantOpen(true)}><PortalIcon name="spark" /><span>Ask MMAUG</span></button>
       <div className={`assistant-drawer-layer ${assistantOpen ? "open" : ""}`} aria-hidden={!assistantOpen} onMouseDown={(event) => { if (event.target === event.currentTarget) setAssistantOpen(false); }}>

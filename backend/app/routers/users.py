@@ -1,13 +1,13 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.audit import record_event
 from app.auth import require_roles
 from app.db import get_db
-from app.models import Role, User
+from app.models import AuditEvent, Role, User
 from app.rate_limit import enforce_rate_limit
 from app.routers.authentication import issue_school_invitation
 from app.schemas import (
@@ -184,3 +184,43 @@ def update_user(
         },
     )
     return target
+
+
+@router.delete("/{user_id}")
+def delete_user(
+    user_id: uuid.UUID,
+    request: Request,
+    admin: User = Depends(require_roles(Role.ADMIN)),
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    target = db.get(User, user_id)
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    if target.id == admin.id:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Administrators cannot delete their own portal account",
+        )
+
+    deleted = {
+        "id": str(target.id),
+        "email": target.email,
+        "role": target.role.value,
+    }
+    db.execute(
+        update(AuditEvent)
+        .where(AuditEvent.actor_id == target.id)
+        .values(actor_id=None)
+    )
+    db.delete(target)
+    db.commit()
+    record_event(
+        db,
+        action="user.deleted",
+        actor=admin,
+        target_type="user",
+        target_id=deleted["id"],
+        correlation_id=request.headers.get("X-Correlation-ID"),
+        details={"email": deleted["email"], "role": deleted["role"]},
+    )
+    return {"status": "deleted", "user_id": deleted["id"]}

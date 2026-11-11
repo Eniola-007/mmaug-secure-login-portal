@@ -449,13 +449,20 @@ def resend_verification(
         db, request, scope="resend-verification", subject=email, limit=5, window_seconds=3600
     )
     user = db.scalar(select(User).where(User.email == email))
-    if user and not user.local_credential:
-        _issue_password_setup(db, user)
-    elif user and not user.email_verified_at:
-        _issue_verification(db, user)
+    if user:
+        delivered = issue_school_invitation(db, user)
+        record_event(
+            db,
+            action="user.self_service_invitation_requested",
+            target_type="user",
+            target_id=user.id,
+            outcome="success" if delivered else "failure",
+            correlation_id=request.headers.get("X-Correlation-ID"),
+            details={"email_delivery": delivered},
+        )
     return RegistrationRead(
         status="accepted",
-        message="If the account is eligible, a verification email is on its way.",
+        message="If the account is eligible, a new invitation or verification email is on its way.",
     )
 
 

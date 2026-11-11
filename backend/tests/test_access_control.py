@@ -71,6 +71,34 @@ def test_admin_cannot_deactivate_self(client: TestClient) -> None:
     assert response.status_code == 409
 
 
+def test_admin_can_delete_another_user_but_not_self(client: TestClient) -> None:
+    users = client.get("/api/users", headers=ADMIN).json()
+    target = next(item for item in users if item["email"] == "student2@mmaug.example")
+    deleted = client.delete(f"/api/users/{target['id']}", headers=ADMIN)
+    assert deleted.status_code == 200
+    assert deleted.json() == {"status": "deleted", "user_id": target["id"]}
+    assert client.get(f"/api/users/{target['id']}", headers=ADMIN).status_code == 404
+    events = client.get("/api/audit-events", headers=ADMIN).json()
+    assert events[0]["action"] == "user.deleted"
+    assert events[0]["target_id"] == target["id"]
+
+    me = client.get("/api/auth/me", headers=ADMIN).json()
+    assert client.delete(f"/api/users/{me['id']}", headers=ADMIN).status_code == 409
+    assert client.delete(f"/api/users/{target['id']}", headers=STUDENT).status_code == 403
+
+
+def test_non_admins_only_see_their_own_activity(client: TestClient) -> None:
+    student = client.get("/api/auth/me", headers=STUDENT).json()
+    teacher = client.get("/api/auth/me", headers=TEACHER).json()
+    student_events = client.get("/api/audit-events", headers=STUDENT).json()
+    assert student_events
+    assert all(
+        event["actor_id"] == student["id"] or event["target_id"] == student["id"]
+        for event in student_events
+    )
+    assert all(event["actor_id"] != teacher["id"] for event in student_events)
+
+
 def test_admin_can_invite_and_reinvite_a_role_scoped_user(
     client: TestClient, monkeypatch
 ) -> None:

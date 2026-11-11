@@ -2,6 +2,11 @@
 
 Production-oriented MVP for RFP `MMAUG-AIDB-RFP-002`.
 
+> **Educational-use caveat:** The MMAUG Secure Login Portal is a solution built as
+> part of the Malta Microsoft AI User Group (MMUAG) AI & DevOps Fundamentals
+> Bootcamp 2026. The solution is for demo/educational purposes and not to be adopted
+> as a production-ready system.
+
 ## Architecture
 
 - Public React + TypeScript landing page with Microsoft and email/password account paths

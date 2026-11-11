@@ -13,9 +13,8 @@ class _EmailClient:
         self.messages: list[dict] = []
         self.polling_values: list[bool] = []
 
-    def begin_send(self, message: dict, *, polling: bool) -> _Poller:
+    def begin_send(self, message: dict) -> _Poller:
         self.messages.append(message)
-        self.polling_values.append(polling)
         return _Poller()
 
 
@@ -59,7 +58,6 @@ def test_verification_and_reset_messages_use_secure_frontend_links(monkeypatch) 
     assert "A &lt;Learner&gt;" in client.messages[0]["content"]["html"]
     assert "reset_password=r%26x" in client.messages[1]["content"]["html"]
     assert client.messages[0]["senderAddress"] == "donotreply@example.azurecomm.net"
-    assert client.polling_values == [False, False, False, False, False, False]
     assert "reset_password=s%26x" in client.messages[2]["content"]["html"]
     assert client.messages[2]["content"]["subject"] == "Set up your MMAUG portal password"
     assert client.messages[3]["content"]["subject"] == "Your MMAUG portal request was received"
@@ -83,11 +81,27 @@ def test_email_delivery_fails_closed(monkeypatch) -> None:
     monkeypatch.setattr(email_service, "get_settings", _settings)
 
     class BrokenClient:
-        def begin_send(self, _message: dict, *, polling: bool):
-            assert polling is False
+        def begin_send(self, _message: dict):
             raise RuntimeError("delivery unavailable")
 
     monkeypatch.setattr(email_service, "_client", BrokenClient)
     assert not email_service.send_password_reset_email(
+        "learner@example.com", "Learner", "token"
+    )
+
+
+def test_email_delivery_rejects_unsuccessful_final_status(monkeypatch) -> None:
+    monkeypatch.setattr(email_service, "get_settings", _settings)
+
+    class FailedPoller:
+        def result(self):
+            return {"status": "Failed"}
+
+    class FailedClient:
+        def begin_send(self, _message: dict):
+            return FailedPoller()
+
+    monkeypatch.setattr(email_service, "_client", FailedClient)
+    assert not email_service.send_verification_email(
         "learner@example.com", "Learner", "token"
     )
