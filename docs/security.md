@@ -23,8 +23,10 @@
 - The role-specific AI endpoint selects the role on the server. An LLM is never an authorization layer.
 - The API rejects prompt overrides, secret requests, cross-user records, and privileged
   action requests before calling Foundry.
-- Foundry uses the App Service managed identity, a curated private knowledge base, and no
-  state-changing tools. The model does not receive credentials or raw database access.
+- Foundry is configured to use the App Service managed identity and a curated private
+  knowledge base. Until effective **Foundry User** RBAC is verified, requests fail closed
+  into the constrained safe fallback. The model receives no credentials, raw database
+  access or state-changing tools.
 - When the administrator-approved Foundry service principal is enabled, its client secret
   is a write-only Terraform input stored in Key Vault; the Web App setting is a Key Vault
   reference and the GitHub workflow continues to deploy through managed-identity OIDC.
@@ -33,7 +35,7 @@
 
 `id-mmaug-secure-login-portal` is the only approved managed identity. Its GitHub
 federated credential trusts the exact repository and `development` environment subject.
-It deploys infrastructure and code and is attached to the API and Application Gateway.
+It deploys infrastructure and code and is attached to the API.
 It has no Microsoft Graph directory permission. The Entra administrator separately owns
 app registrations, API scopes, consent, and redirect URIs. Because deployment and runtime
 duties share one identity, protect the GitHub environment with branch restrictions and
@@ -46,7 +48,7 @@ required reviewers.
 | URL or client-side role tampering | Server-side RBAC dependencies | API authorization tests |
 | Cross-student disclosure | Object-level owner check | Negative access test |
 | Stolen deployment secret | GitHub OIDC; no Azure client secret | Workflow permissions and federation |
-| Credential stuffing | Entra MFA/Conditional Access; WAF/rate limiting required before production local auth | Tenant and WAF review |
+| Credential stuffing | Persistent endpoint rate limiting; Entra MFA/Conditional Access when Microsoft sign-in is enabled | Rate-limit tests and tenant review |
 | Password disclosure | Argon2id hashing; no plaintext storage or logging | Local-auth tests and database review |
 | Self-service privilege escalation | Registration rejects role; inactive Student default; admin-only activation | Negative registration test |
 | SQL injection | SQLAlchemy parameterization | Code review and tests |
@@ -55,8 +57,8 @@ required reviewers.
 | Hallucinated school policy | File-search grounding and explicit safe referral | Grounding evaluation |
 | Assistant data leakage | PostgreSQL role boundary; no question text in audit details | Audit review |
 | Direct database access | Private VNet address and no public endpoint | Terraform plan |
-| Web exploits and malicious request bodies | Application Gateway WAF_v2, OWASP 3.2 Prevention mode | WAF policy and logs |
-| Clear-text public traffic | HTTP-to-HTTPS redirect and Key Vault-backed certificate | Gateway listener configuration |
+| Web exploits and malicious request bodies | App Service HTTPS, strict request schemas and application validation | API and negative-input tests |
+| Clear-text public traffic | Azure App Service HTTPS is the documented public endpoint | Live HTTPS verification |
 
 ## Production readiness gates
 
@@ -64,7 +66,7 @@ Real student data is prohibited until privacy/DPIA, retention, backup restore,
 penetration testing, operational ownership, Conditional Access, and incident response
 are approved. Development uses synthetic records only.
 
-Local password reset, email ownership verification, durable distributed rate limiting,
-and administrator registration-review procedures are explicit production gates. Until
-those controls are approved, local accounts are suitable only for this synthetic-data
-development demonstration.
+Local password reset, email ownership verification, PostgreSQL-backed rate limiting and
+administrator registration review are implemented for the synthetic demonstration. They
+do not remove the remaining privacy, operational, resilience, accessibility, penetration
+and incident-response gates.

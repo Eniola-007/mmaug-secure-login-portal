@@ -46,14 +46,6 @@ output "foundry_model_deployment_name" {
   value = azurerm_cognitive_deployment.gpt_5_4_mini.name
 }
 
-output "application_gateway_public_ip" {
-  value = data.azurerm_public_ip.application_gateway.ip_address
-}
-
 output "portal_url" {
-  value = var.application_gateway_enabled ? "https://${local.application_gateway_hostname}" : "https://${azurerm_linux_web_app.frontend.default_hostname}"
-}
-
-output "application_gateway_fqdn" {
-  value = data.azurerm_public_ip.application_gateway.fqdn
+  value = "https://${azurerm_linux_web_app.frontend.default_hostname}"
 }

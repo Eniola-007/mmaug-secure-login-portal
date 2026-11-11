@@ -1,26 +1,27 @@
 # Requirements traceability
 
-| RFP requirement | Implementation | Validation |
+Status meanings: **Live** is deployed and tested, **Pending** requires an administrator or
+acceptance step, and **Planned** is implemented in design/source but not deployed.
+
+| Requirement | Implementation | Status and evidence |
 |---|---|---|
-| Student, teacher, administrator | Database role enum and role-aware UI/API | Role dashboard test |
-| Secure sign-in/out | Microsoft identity platform OIDC authorization code + PKCE | Integration test |
-| Broad account support | `common` authority for work, school, guest, and personal Microsoft accounts | Cross-account sign-in test |
-| Deny-by-default enrollment | Composite tenant/object ID lookup in PostgreSQL | Unenrolled-account 403 test |
-| Recovery | Entra password reset delegation | Recovery journey demo |
-| Protected API | JWT validation, scope, active status, server-side RBAC | 401/403 tests |
-| Account administration | Admin-only list, activation, deactivation, role update | Admin API test |
-| Audit events | Append-only event records for sessions and access changes | Audit API test |
-| No plaintext passwords | Entra authentication; PostgreSQL bootstrap secret in Key Vault | Config review |
-| Five students, two teachers, one admin | Synthetic seed dataset | Seed count/demo |
-| CI/CD | GitHub Actions build, test, scan, Terraform, deploy, health check | Workflow run |
-| Secretless Azure deployment | GitHub OIDC to the single approved UAMI; no client secret | OIDC login evidence |
-| Web application firewall | Application Gateway WAF_v2, OWASP 3.2 Prevention | WAF policy and blocked-request test |
-| Public HTTPS endpoint | Azure regional DNS label and Key Vault-backed TLS certificate | DNS, TLS, and redirect test |
-| Separate environments | GitHub environments and Terraform environment variable | Dev/UAT/prod plans |
-| Monitoring | Workspace-based Application Insights | Azure telemetry query |
-| Private database | VNet delegated PostgreSQL with public access disabled | Terraform plan |
-| 1,500 accounts | Stateless API, indexed users, managed database | Load-test record |
-| Three agent experiences | Server-side PostgreSQL role selection; Foundry agent name by role | Isolation tests |
-| Curated agent knowledge | Private Azure Blob container uploaded by the OIDC workflow | Blob inventory and grounding test |
-| Model choice | `gpt-5.4-mini` deployment variable | Foundry deployment evidence |
-| Agent guardrails | Pre-model refusal, no state-changing tools, safe fallback, minimal audit | Adversarial prompt tests |
+| Student, Teacher and Administrator | PostgreSQL role enum, FastAPI dependencies and role dashboards | **Live** — API/UI tests |
+| Public landing page | React public site with school branding and educational caveat | **Live** — deployed frontend |
+| Local sign-in and recovery | Argon2id, verified email, versioned JWT, one-time recovery | **Live** — authentication tests |
+| Microsoft sign-in | SPA authorization code with PKCE; API `access_as_user` validation | **Pending** — client IDs are zero UUID |
+| Deny-by-default enrollment | Inactive registration and composite tenant/object lookup | **Live** — negative access tests |
+| Account administration | Invite, re-invite, role update, activation, deactivation and deletion | **Live** — admin API tests |
+| Activity records | Administrator-wide audit and user-scoped activity | **Live** — access-control tests |
+| No plaintext passwords | Argon2id local hashes; secrets in Key Vault | **Live** — code/config review |
+| Synthetic demonstration accounts | Seed data and controlled enrollment tooling | **Live for demo** — real student data prohibited |
+| CI/CD | GitHub CI plus OIDC Terraform/application deployment | **Live** — runs `43042953432` and `43043200125` |
+| Secretless Azure deployment | Environment OIDC to the single approved UAMI | **Live** — Azure/GitHub evidence |
+| Private database | VNet-injected PostgreSQL, linked private DNS, no public access | **Live** — Azure resource state |
+| Email verification and invitations | ACS Email through managed identity; final operation check | **Live** — dependency telemetry and tests |
+| Monitoring | Application Insights and Log Analytics | **Live** — workspace and dependency telemetry |
+| Role-aware assistant UI | Server-selected role, deterministic guardrails and safe fallback | **Live** — agent route tests |
+| Foundry model | Foundry project and `gpt-5.4-mini` deployment | **Live platform; Pending inference RBAC** |
+| Curated agent knowledge | Private Blob knowledge files and role-specific provisioning script | **Live storage; Pending grounded runtime test** |
+| Separate environments | GitHub environment and Terraform environment variable | **Development live; UAT/production not deployed** |
+| 1,500 accounts | Indexed stateless design | **Pending** — load test not completed |
+| Production governance | Privacy, retention, backup/restore, penetration and operations | **Pending** — mandatory before real data |

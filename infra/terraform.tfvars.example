@@ -7,11 +7,4 @@ runtime_identity_name  = "id-mmaug-secure-login-portal"
 entra_api_client_id    = "00000000-0000-0000-0000-000000000000" # Replace after administrator handoff.
 entra_spa_client_id    = "00000000-0000-0000-0000-000000000000" # Replace after administrator handoff.
 
-# Enable only after DNS and a Key Vault-backed production certificate are ready.
-application_gateway_enabled               = false
-application_gateway_dns_label             = "mmaug-secure-portal"
-application_gateway_public_ip_name         = "pip-mmaug-secure-portal"
-application_gateway_host_name             = "" # Or a school-owned custom domain.
-application_gateway_certificate_secret_id = "https://replace-me.vault.azure.net/secrets/portal-tls"
-
 # PostgreSQL receives a generated password stored only in encrypted Terraform state and Key Vault.

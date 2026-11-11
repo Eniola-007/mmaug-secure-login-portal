@@ -1,5 +1,9 @@
 # Deployment runbook
 
+Current development state: the frontend and API App Services, private PostgreSQL, email,
+monitoring, knowledge storage and Foundry project/model are deployed. Microsoft client
+IDs and effective runtime Foundry RBAC remain completion gates.
+
 ## 1. Approved deployment identity
 
 - Tenant: `71beefd7-29f4-4b9e-9cb2-e78b5dc851ad`
@@ -24,7 +28,8 @@ Run the `Deploy development` GitHub workflow. It:
    B1 App Service Plan, and separate API/frontend Web Apps.
 4. Generates the PostgreSQL bootstrap password inside Terraform; it is not supplied as a
    GitHub secret or committed to source.
-5. Builds the frontend in “MSAL pending” mode using zero-UUID placeholders.
+5. Builds the frontend in “MSAL pending” mode when the Entra client-ID variables are not
+   available. This is the current deployed state.
 6. Deploys both packages, verifies the API and frontend, and writes both HTTPS URLs to
    the GitHub job summary.
 
@@ -32,7 +37,6 @@ Required GitHub `development` variables for stage one:
 
 - `AZURE_TENANT_ID`
 - `AZURE_SUBSCRIPTION_ID`
-- `APPLICATION_GATEWAY_ENABLED=false`
 
 No Azure client secret, publish profile, PostgreSQL password, or Entra app client ID is
 required for the first deployment.
@@ -49,7 +53,6 @@ Send the workflow's **Frontend URL** to the Entra administrator. The administrat
 5. Configures SPA redirect URIs:
    - `http://localhost:5173`
    - the exact direct frontend App Service HTTPS URL
-   - later, the final Application Gateway HTTPS URL
 6. Creates no client secret.
 7. Returns the SPA and API client IDs.
 
@@ -99,7 +102,9 @@ Terraform creates the Foundry resource, `mmaug-school-portal` project, and the a
 public visitor agent plus three role-scoped agents, each with a separate file-search store
 containing only its reviewed Markdown boundary.
 
-The Foundry administrator must:
+Current role-assignment evidence for managed-identity principal
+`6d15404b-a6d8-4019-b638-609f1c75723d` shows Contributor only. The Foundry administrator
+must:
 
 1. open Foundry account `aifoundry-mmaug-development-gkt6d`, then project
    `mmaug-school-portal`, and select **Access control (IAM)**;
@@ -165,23 +170,7 @@ The API starts its idempotent Alembic migration in a background worker so App Se
 answer platform warm-up probes immediately. `/health/ready` remains unavailable until the
 migration and a live PostgreSQL query both succeed.
 
-## 7. Application Gateway WAF_v2
-
-The final hostname is `mmaug-secure-portal.northeurope.cloudapp.azure.com`, reserved on
-Standard static Public IP `68.219.97.185`.
-
-After obtaining a trusted certificate:
-
-1. Import it into Key Vault and record its versionless secret ID.
-2. Set `APPLICATION_GATEWAY_CERTIFICATE_SECRET_ID` as a protected GitHub secret.
-3. Set `APPLICATION_GATEWAY_ENABLED=true`.
-4. Rerun the deployment workflow.
-5. Add the gateway HTTPS URL to the SPA redirect URIs.
-
-The gateway redirects HTTP to HTTPS, applies OWASP 3.2 rules in Prevention mode, routes
-`/api/*` to FastAPI, and routes all other paths to React.
-
-## 8. Acceptance verification
+## 7. Acceptance verification
 
 1. `/health/ready` returns HTTP 200.
 2. The frontend URL returns HTTP 200 and displays the MMAUG-branded portal.
@@ -190,7 +179,7 @@ The gateway redirects HTTP to HTTPS, applies OWASP 3.2 rules in Prevention mode,
 5. An unenrolled account receives no portal data.
 6. Each role receives only its dashboard and permitted objects.
 7. Administrative changes create audit events.
-8. WAF and Application Insights record the expected telemetry.
+8. Application Insights records expected telemetry.
 9. The repository contains no Azure client secret or publish profile.
 10. The knowledge container is private and contains only reviewed files.
 11. Each role agent stays inside its server-selected boundary and refuses cross-user data.

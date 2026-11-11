@@ -116,42 +116,6 @@ variable "app_service_sku" {
   default     = "B1"
 }
 
-variable "application_gateway_enabled" {
-  description = "Create the approved WAF_v2 Application Gateway after DNS and TLS inputs are available."
-  type        = bool
-  default     = false
-}
-
-variable "application_gateway_host_name" {
-  description = "Optional custom DNS host name. When empty, the Azure-provided cloudapp.azure.com hostname is used."
-  type        = string
-  default     = ""
-}
-
-variable "application_gateway_dns_label" {
-  description = "Azure Public IP DNS label. The resulting regional cloudapp.azure.com name must remain available until deployment."
-  type        = string
-  default     = "mmaug-secure-portal"
-
-  validation {
-    condition     = can(regex("^[a-z][a-z0-9-]{1,61}[a-z0-9]$", var.application_gateway_dns_label))
-    error_message = "application_gateway_dns_label must be a valid Azure regional DNS label."
-  }
-}
-
-variable "application_gateway_public_ip_name" {
-  description = "Existing Standard static Public IP that reserves the approved Application Gateway DNS label."
-  type        = string
-  default     = "pip-mmaug-secure-portal"
-}
-
-variable "application_gateway_certificate_secret_id" {
-  description = "Versionless Key Vault secret ID for the Application Gateway TLS certificate."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
 variable "postgres_sku" {
   description = "PostgreSQL Flexible Server SKU. Burstable is for development only."
   type        = string

@@ -1,6 +1,6 @@
 # MMAUG High School Secure Login Portal
 
-Production-oriented MVP for RFP `MMAUG-AIDB-RFP-002`.
+Educational development MVP for RFP `MMAUG-AIDB-RFP-002`.
 
 > **Educational-use caveat:** The MMAUG Secure Login Portal is a solution built as
 > part of the Malta Microsoft AI User Group (MMUAG) AI & DevOps Fundamentals
@@ -9,18 +9,21 @@ Production-oriented MVP for RFP `MMAUG-AIDB-RFP-002`.
 
 ## Architecture
 
+![Current working Microsoft-style Azure architecture](docs/architecture-current.svg)
+
 - Public React + TypeScript landing page with Microsoft and email/password account paths
 - FastAPI protected API with server-side role and account-status checks
 - PostgreSQL application profiles and append-only audit events
-- Microsoft Foundry role assistants grounded in a curated Azure Blob knowledge base,
-  with deterministic pre-model guardrails and a safe fallback
-- Azure App Service Plan, Application Gateway WAF_v2, Key Vault, Application Insights,
-  and one approved user-assigned managed identity
+- Microsoft Foundry project/model and curated Azure Blob knowledge base, with
+  deterministic pre-model guardrails and a safe fallback while runtime RBAC is completed
+- Azure App Service Plan, private PostgreSQL, VNet/private DNS, Key Vault, Azure
+  Communication Services, Application Insights, and one approved user-assigned identity
 - Terraform infrastructure and GitHub Actions deployment through OIDC
 
-Deployment is infrastructure-first: the managed identity deploys the Web Apps and returns
-the frontend URL; the Entra administrator then creates the SPA/API registrations and
-configures MSAL without granting the deployment identity Microsoft Graph permissions.
+The development portal is live at
+[`app-mmaug-development-web-gkt6d.azurewebsites.net`](https://app-mmaug-development-web-gkt6d.azurewebsites.net).
+Microsoft sign-in is pending the tenant administrator's SPA/API registrations and client
+IDs; local verified-email accounts are active for synthetic demonstrations.
 
 Microsoft accounts use the identity platform `common` authority; non-Microsoft visitors
 can create a password account whose Argon2id hash is stored separately. Authentication
@@ -40,10 +43,8 @@ records; only the Administrator dashboard can activate an account or assign Teac
 Administrator. The controlled first-admin procedure is documented in
 [docs/first-administrator.md](docs/first-administrator.md).
 
-The proposed public endpoint is
-`https://mmaug-secure-portal.northeurope.cloudapp.azure.com`, reserved on Standard static
-Public IP `68.219.97.185`. The solution uses managed identity and GitHub OIDC instead of
-a client secret.
+Direct Azure App Service HTTPS is the active ingress. The solution uses managed identity
+and GitHub OIDC instead of an Azure deployment client secret.
 
 ## Local development
 
@@ -84,5 +85,5 @@ See [docs/deployment.md](docs/deployment.md) for Azure and OIDC setup and
 [docs/security.md](docs/security.md) for the security boundary.
 
 The updated RFP response is available as
-[proposal source](docs/proposal-v4.md) and
-[Version 4 PDF](MMAUG_Secure_Login_Portal_RFP_Response_v4_Single_Identity_WAF.pdf).
+[proposal source](docs/proposal-v5.md) and
+[Version 5 PDF](MMAUG_Secure_Login_Portal_RFP_Response_v5_Current_Architecture.pdf).

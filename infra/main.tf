@@ -127,15 +127,6 @@ resource "azurerm_subnet" "database" {
   }
 }
 
-resource "azurerm_subnet" "application_gateway" {
-  count = var.application_gateway_enabled ? 1 : 0
-
-  name                 = "snet-appgateway"
-  resource_group_name  = data.azurerm_resource_group.project.name
-  virtual_network_name = azurerm_virtual_network.portal.name
-  address_prefixes     = ["10.42.3.0/24"]
-}
-
 resource "azurerm_private_dns_zone" "postgres" {
   name                = "privatelink.postgres.database.azure.com"
   resource_group_name = data.azurerm_resource_group.project.name
@@ -318,15 +309,13 @@ resource "azurerm_linux_web_app" "api" {
     ALLOW_DEV_AUTH             = "false"
     LOCAL_AUTH_JWT_SECRET      = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.local_auth_jwt.versionless_id})"
     LOCAL_AUTH_TOKEN_MINUTES   = "60"
-    PUBLIC_FRONTEND_URL        = var.application_gateway_enabled ? "https://${local.application_gateway_hostname}" : "https://${azurerm_linux_web_app.frontend.default_hostname}"
+    PUBLIC_FRONTEND_URL        = "https://${azurerm_linux_web_app.frontend.default_hostname}"
     EMAIL_DELIVERY_ENABLED     = "true"
     ACS_EMAIL_ENDPOINT         = "https://${azurerm_communication_service.portal.hostname}"
     ACS_EMAIL_SENDER           = "donotreply@${azurerm_email_communication_service_domain.portal.from_sender_domain}"
     EMAIL_VERIFICATION_MINUTES = "60"
     PASSWORD_RESET_MINUTES     = "30"
-    CORS_ORIGINS = jsonencode([
-      var.application_gateway_enabled ? "https://${local.application_gateway_hostname}" : "https://${azurerm_linux_web_app.frontend.default_hostname}"
-    ])
+    CORS_ORIGINS = jsonencode(["https://${azurerm_linux_web_app.frontend.default_hostname}"])
     APPLICATIONINSIGHTS_CONNECTION_STRING      = azurerm_application_insights.portal.connection_string
     ApplicationInsightsAgent_EXTENSION_VERSION = "~3"
     AZURE_CLIENT_ID                            = data.azurerm_user_assigned_identity.runtime.client_id

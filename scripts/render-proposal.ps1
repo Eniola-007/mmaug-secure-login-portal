@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
-    [string]$InputPath = 'docs/proposal-v4.md',
-    [string]$OutputPath = 'MMAUG_Secure_Login_Portal_RFP_Response_v4_Single_Identity_WAF.pdf'
+    [string]$InputPath = 'docs/proposal-v5.md',
+    [string]$OutputPath = 'MMAUG_Secure_Login_Portal_RFP_Response_v5_Current_Architecture.pdf'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -9,7 +9,7 @@ $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $inputFile = [System.IO.Path]::GetFullPath((Join-Path $repositoryRoot $InputPath))
 $outputFile = [System.IO.Path]::GetFullPath((Join-Path $repositoryRoot $OutputPath))
 $logoFile = [System.IO.Path]::GetFullPath((Join-Path $repositoryRoot 'frontend/src/assets/mmaug-logo.png'))
-$architectureFile = [System.IO.Path]::GetFullPath((Join-Path $repositoryRoot 'docs/architecture-microsoft.svg'))
+$architectureFile = [System.IO.Path]::GetFullPath((Join-Path $repositoryRoot 'docs/architecture-current.svg'))
 $edge = 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
 
 if (-not (Test-Path -LiteralPath $inputFile)) {
@@ -22,7 +22,7 @@ if (-not (Test-Path -LiteralPath $edge)) {
 $rendered = ConvertFrom-Markdown -Path $inputFile
 $logoUri = ([Uri]$logoFile).AbsoluteUri
 $architectureUri = ([Uri]$architectureFile).AbsoluteUri
-$proposalHtml = $rendered.Html.Replace('src="architecture-microsoft.svg"', "src=`"$architectureUri`"")
+$proposalHtml = $rendered.Html.Replace('src="architecture-current.svg"', "src=`"$architectureUri`"")
 $html = @"
 <!doctype html>
 <html lang="en">
