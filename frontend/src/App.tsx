@@ -36,11 +36,12 @@ const roleExperience: Record<Role, {
   },
 };
 
-type View = "dashboard" | "assistant" | "people" | "audit";
+type View = "dashboard" | "people" | "audit";
 type AuthMode = "signin" | "signup" | "forgot" | "reset";
 interface TokenResponse { access_token: string; token_type: string; expires_in: number }
 interface RegistrationResponse { status: string; message: string }
 interface PublicAgentResponse { audience: string; mode: string; response: string; safety_notice: string }
+interface ChatEntry { id: number; sender: "assistant" | "user"; text: string }
 
 function MicrosoftMark() {
   return <span className="microsoft-mark" aria-hidden="true"><i /><i /><i /><i /></span>;
@@ -62,11 +63,12 @@ function PortalIcon({ name }: { name: "home" | "spark" | "people" | "audit" | "b
   return <svg className="portal-icon" viewBox="0 0 24 24" aria-hidden="true">{paths[name]}</svg>;
 }
 
-function AuthDialog({ mode, onModeChange, onClose, onLocalLogin, onLocalRegister, onForgotPassword, onResetPassword, onMicrosoft, authReady, busy, message, error }: {
+function AuthDialog({ mode, onModeChange, onClose, onLocalLogin, onLocalRegister, onForgotPassword, onResendVerification, onResetPassword, onMicrosoft, authReady, busy, message, error }: {
   mode: AuthMode; onModeChange: (mode: AuthMode) => void; onClose: () => void;
   onLocalLogin: (email: string, password: string) => Promise<void>;
   onLocalRegister: (name: string, email: string, password: string) => Promise<void>;
   onForgotPassword: (email: string) => Promise<void>;
+  onResendVerification: (email: string) => Promise<void>;
   onResetPassword: (password: string) => Promise<void>;
   onMicrosoft: () => void; authReady: boolean; busy: boolean; message: string; error: string;
 }) {
@@ -101,7 +103,7 @@ function AuthDialog({ mode, onModeChange, onClose, onLocalLogin, onLocalRegister
           {message && <div className="success-message" role="status">{message}</div>}
           {error && <div className="form-error" role="alert">{error}</div>}
           <button className="primary full" type="submit" disabled={busy}>{busy ? "Please wait…" : mode === "signup" ? "Request my account" : mode === "forgot" ? "Send recovery link" : mode === "reset" ? "Reset password" : "Sign in securely"}</button>
-          {mode === "signin" && <button className="text-action" type="button" onClick={() => onModeChange("forgot")}>Forgot your local password?</button>}
+          {mode === "signin" && <div className="auth-secondary-actions"><button className="text-action" type="button" onClick={() => onModeChange("forgot")}>Forgot your local password?</button><button className="text-action" type="button" disabled={!email || busy} onClick={() => void onResendVerification(email)}>Resend verification email</button></div>}
           {(mode === "forgot" || mode === "reset") && <button className="text-action" type="button" onClick={() => onModeChange("signin")}>Back to sign in</button>}
         </form>
       </section>
@@ -114,20 +116,26 @@ function PublicLanding({ openAuth, onMicrosoftRegistration, onMicrosoftSignout, 
   microsoftEmail: string; accessError: string; accessMessage: string; loading: boolean;
 }) {
   const [visitorMessage, setVisitorMessage] = useState("");
-  const [visitorReply, setVisitorReply] = useState("Welcome to MMAUG High School. Ask me about the portal, creating an account, signing in, verification, or account recovery.");
+  const [visitorMessages, setVisitorMessages] = useState<ChatEntry[]>([
+    { id: 1, sender: "assistant", text: "Welcome to MMAUG High School. Ask me about the portal, creating an account, signing in, verification, or account recovery." },
+  ]);
   const [visitorError, setVisitorError] = useState("");
   const [visitorBusy, setVisitorBusy] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
 
   async function askVisitor(event: FormEvent) {
     event.preventDefault();
+    const question = visitorMessage.trim();
+    if (!question) return;
     setVisitorBusy(true); setVisitorError("");
+    setVisitorMessages((items) => [...items, { id: Date.now(), sender: "user", text: question }]);
+    setVisitorMessage("");
     try {
       const result = await publicApiRequest<PublicAgentResponse>("/api/agent/public", {
         method: "POST",
-        body: JSON.stringify({ message: visitorMessage }),
+        body: JSON.stringify({ message: question }),
       });
-      setVisitorReply(`${result.response} ${result.safety_notice}`);
-      setVisitorMessage("");
+      setVisitorMessages((items) => [...items, { id: Date.now() + 1, sender: "assistant", text: `${result.response} ${result.safety_notice}` }]);
     } catch (caught) {
       setVisitorError(caught instanceof Error ? caught.message : "The visitor assistant is unavailable");
     } finally {
@@ -157,15 +165,10 @@ function PublicLanding({ openAuth, onMicrosoftRegistration, onMicrosoftSignout, 
         <section className="assistant-story" id="assistant">
           <div className="assistant-orbit"><div className="orbit-ring"><img src={mmaugLogo} alt="MMAUG" /></div><span className="orbit-chip chip-one">STUDENT</span><span className="orbit-chip chip-two">TEACHER</span><span className="orbit-chip chip-three">ADMIN</span></div>
           <div className="assistant-copy"><p className="eyebrow light">YOUR SCHOOL GUIDE</p><h2>Helpful answers.<br />Clear boundaries.</h2><p>Visitors can ask about the portal and account process here. After sign-in, the assistant automatically follows the Student, Teacher, or Administrator role stored in PostgreSQL.</p><div className="assistant-points"><span><i>✓</i> Answers from approved school information</span><span><i>✓</i> Separate public and role-specific knowledge</span><span><i>✓</i> Human oversight for important decisions</span></div>
-            <div className="visitor-assistant">
+            <div className="visitor-assistant assistant-invitation">
               <div className="visitor-assistant-heading"><span><PortalIcon name="spark" /></span><div><strong>Ask the MMAUG visitor assistant</strong><small>Public portal guidance only</small></div></div>
-              <div className="visitor-reply" aria-live="polite">{visitorReply}</div>
-              {visitorError && <div className="visitor-error" role="alert">{visitorError}</div>}
-              <form onSubmit={(event) => void askVisitor(event)}>
-                <label htmlFor="visitor-question">Your question</label>
-                <div><input id="visitor-question" value={visitorMessage} onChange={(event) => setVisitorMessage(event.target.value)} maxLength={2000} required placeholder="How do I create an account?" /><button className="primary" type="submit" disabled={visitorBusy}>{visitorBusy ? "Asking…" : "Ask"}</button></div>
-              </form>
-              <small>Do not enter passwords, security codes, or personal school information.</small>
+              <p>Open a private chat drawer without leaving this page. I can explain account creation, verification, recovery, and portal access.</p>
+              <button className="primary" type="button" onClick={() => setAssistantOpen(true)}>Start a chat <ArrowIcon /></button>
             </div>
           </div>
         </section>
@@ -173,6 +176,16 @@ function PublicLanding({ openAuth, onMicrosoftRegistration, onMicrosoftSignout, 
         <section className="closing-cta"><img src={mmaugLogo} alt="" /><p className="eyebrow light">WELCOME TO MMAUG HIGH SCHOOL</p><h2>Ready to begin your school day?</h2><p>Create an account with or without Microsoft. Your administrator will approve the right workspace.</p><div><button className="primary large" onClick={() => openAuth("signup")}>Create your account</button><button className="link-light" onClick={() => openAuth("signin")}>Sign in instead →</button></div></section>
       </main>
       <footer className="public-footer"><a className="public-brand" href="#top"><img src={mmaugLogo} alt="" /><span>MMAUG <small>HIGH SCHOOL</small></span></a><p>Learn. Innovate. Build.</p><div><a href="https://passwordreset.microsoftonline.com/">Microsoft account recovery</a><span>Secure school portal</span></div></footer>
+      <button className="assistant-launcher" type="button" aria-expanded={assistantOpen} aria-controls="visitor-assistant-drawer" onClick={() => setAssistantOpen(true)}><PortalIcon name="spark" /><span>Ask MMAUG</span></button>
+      <div className={`assistant-drawer-layer ${assistantOpen ? "open" : ""}`} aria-hidden={!assistantOpen} onMouseDown={(event) => { if (event.target === event.currentTarget) setAssistantOpen(false); }}>
+        <aside className="assistant-drawer" id="visitor-assistant-drawer" role="dialog" aria-modal="true" aria-labelledby="visitor-assistant-title">
+          <header className="assistant-drawer-header"><div><span><PortalIcon name="spark" /></span><div><p>PUBLIC SCHOOL GUIDE</p><h2 id="visitor-assistant-title">MMAUG Assistant</h2></div></div><button type="button" onClick={() => setAssistantOpen(false)} aria-label="Close assistant">×</button></header>
+          <div className="assistant-scope"><PortalIcon name="shield" /><span>Portal guidance only. Do not share passwords, codes, or personal school information.</span></div>
+          <div className="chat-transcript" aria-live="polite">{visitorMessages.map((entry) => <div className={`chat-message ${entry.sender}`} key={entry.id}><span>{entry.sender === "assistant" ? "MMAUG" : "You"}</span><p>{entry.text}</p></div>)}{visitorBusy && <div className="chat-message assistant pending"><span>MMAUG</span><p>Thinking within the approved school guidance…</p></div>}</div>
+          {visitorError && <div className="visitor-error" role="alert">{visitorError}</div>}
+          <form className="chat-composer" onSubmit={(event) => void askVisitor(event)}><label htmlFor="visitor-drawer-question">Ask a question</label><div><textarea id="visitor-drawer-question" value={visitorMessage} onChange={(event) => setVisitorMessage(event.target.value)} maxLength={2000} required placeholder="How do I verify my account?" /><button className="primary" type="submit" disabled={visitorBusy || !visitorMessage.trim()} aria-label="Send question"><ArrowIcon /></button></div><small>Answers use approved public information and cannot change access.</small></form>
+        </aside>
+      </div>
     </div>
   );
 }
@@ -190,7 +203,9 @@ export default function App() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [agentMessage, setAgentMessage] = useState("");
-  const [agentReply, setAgentReply] = useState("");
+  const [agentMessages, setAgentMessages] = useState<ChatEntry[]>([]);
+  const [agentBusy, setAgentBusy] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode | null>(null);
   const [authBusy, setAuthBusy] = useState(false);
   const [authMessage, setAuthMessage] = useState("");
@@ -264,6 +279,15 @@ export default function App() {
     finally { setAuthBusy(false); }
   }
 
+  async function resendVerification(email: string) {
+    setAuthBusy(true); setAuthError(""); setAuthMessage("");
+    try {
+      const response = await publicApiRequest<RegistrationResponse>("/api/auth/resend-verification", { method: "POST", body: JSON.stringify({ email }) });
+      setAuthMessage(response.message);
+    } catch (caught) { setAuthError(caught instanceof Error ? caught.message : "Verification request failed"); }
+    finally { setAuthBusy(false); }
+  }
+
   async function resetPassword(password: string) {
     setAuthBusy(true); setAuthError(""); setAuthMessage("");
     try {
@@ -297,29 +321,46 @@ export default function App() {
   }
 
   async function askAgent(event: FormEvent) {
-    event.preventDefault(); setError("");
-    try { const response = await callApi<{ response: string; safety_notice: string }>("/api/agent/message", { method: "POST", body: JSON.stringify({ message: agentMessage }) }); setAgentReply(`${response.response} ${response.safety_notice}`); setAgentMessage(""); }
+    event.preventDefault();
+    const question = agentMessage.trim();
+    if (!question) return;
+    setError(""); setAgentBusy(true); setAgentMessage("");
+    setAgentMessages((items) => [...items, { id: Date.now(), sender: "user", text: question }]);
+    try { const response = await callApi<{ response: string; safety_notice: string }>("/api/agent/message", { method: "POST", body: JSON.stringify({ message: question }) }); setAgentMessages((items) => [...items, { id: Date.now() + 1, sender: "assistant", text: `${response.response} ${response.safety_notice}` }]); }
     catch (caught) { setError(caught instanceof Error ? caught.message : "Assistant request failed"); }
+    finally { setAgentBusy(false); }
   }
 
-  function askSuggested(question: string) { setAgentMessage(question); setView("assistant"); }
+  function askSuggested(question: string) { setAgentMessage(question); setAssistantOpen(true); }
   const experience = useMemo(() => currentUser ? roleExperience[currentUser.role] : null, [currentUser]);
 
   if (!currentUser) {
-    return <><PublicLanding openAuth={openAuth} onMicrosoftRegistration={() => void requestMicrosoftRegistration()} onMicrosoftSignout={() => void instance.logoutRedirect()} microsoftEmail={account?.username ?? ""} accessError={error} accessMessage={accessMessage} loading={loading} />{authMode && <AuthDialog key={authMode} mode={authMode} onModeChange={(mode) => { setAuthMode(mode); setAuthError(""); setAuthMessage(""); }} onClose={() => setAuthMode(null)} onLocalLogin={localLogin} onLocalRegister={localRegister} onForgotPassword={forgotPassword} onResetPassword={resetPassword} onMicrosoft={() => void instance.loginRedirect({ ...loginRequest, prompt: "select_account" })} authReady={authConfigured} busy={authBusy} message={authMessage} error={authError} />}</>;
+    return <><PublicLanding openAuth={openAuth} onMicrosoftRegistration={() => void requestMicrosoftRegistration()} onMicrosoftSignout={() => void instance.logoutRedirect()} microsoftEmail={account?.username ?? ""} accessError={error} accessMessage={accessMessage} loading={loading} />{authMode && <AuthDialog key={authMode} mode={authMode} onModeChange={(mode) => { setAuthMode(mode); setAuthError(""); setAuthMessage(""); }} onClose={() => setAuthMode(null)} onLocalLogin={localLogin} onLocalRegister={localRegister} onForgotPassword={forgotPassword} onResendVerification={resendVerification} onResetPassword={resetPassword} onMicrosoft={() => void instance.loginRedirect({ ...loginRequest, prompt: "select_account" })} authReady={authConfigured} busy={authBusy} message={authMessage} error={authError} />}</>;
   }
 
   return (
     <div className={`app-shell role-${currentUser.role}`}>
-      <aside className="sidebar"><div className="brand"><img className="brand-logo" src={mmaugLogo} alt="" /><span>MMAUG<br /><small>HIGH SCHOOL</small></span></div><div className="workspace-label"><small>YOUR WORKSPACE</small><strong>{experience?.label}</strong></div><nav aria-label="Portal navigation"><button className={view === "dashboard" ? "active" : ""} onClick={() => void openView("dashboard")}><PortalIcon name="home" /> Overview</button><button className={view === "assistant" ? "active" : ""} onClick={() => void openView("assistant")}><PortalIcon name="spark" /> My assistant</button>{currentUser.role === "admin" && <><button className={view === "people" ? "active" : ""} onClick={() => void openView("people")}><PortalIcon name="people" /> People & access</button><button className={view === "audit" ? "active" : ""} onClick={() => void openView("audit")}><PortalIcon name="audit" /> Audit activity</button></>}</nav><div className="sidebar-help"><PortalIcon name="shield" /><div><strong>Protected workspace</strong><small>Access follows your database role.</small></div></div><div className="sidebar-footer"><span className="status-dot" /> Secure session</div></aside>
+      <aside className="sidebar"><div className="brand"><img className="brand-logo" src={mmaugLogo} alt="" /><span>MMAUG<br /><small>HIGH SCHOOL</small></span></div><div className="workspace-label"><small>YOUR WORKSPACE</small><strong>{experience?.label}</strong></div><nav aria-label="Portal navigation"><button className={view === "dashboard" ? "active" : ""} onClick={() => void openView("dashboard")}><PortalIcon name="home" /> Overview</button><button className={assistantOpen ? "active" : ""} onClick={() => setAssistantOpen(true)}><PortalIcon name="spark" /> My assistant</button>{currentUser.role === "admin" && <><button className={view === "people" ? "active" : ""} onClick={() => void openView("people")}><PortalIcon name="people" /> People & access</button><button className={view === "audit" ? "active" : ""} onClick={() => void openView("audit")}><PortalIcon name="audit" /> Audit activity</button></>}</nav><div className="sidebar-help"><PortalIcon name="shield" /><div><strong>Protected workspace</strong><small>Access follows your database role.</small></div></div><div className="sidebar-footer"><span className="status-dot" /> Secure session</div></aside>
       <main className="main-content">
         <header className="topbar"><div><p className="eyebrow">{new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }).toUpperCase()}</p><h2>Welcome, {currentUser.display_name.split(" ")[0]}</h2></div><div className="account-area">{devAuthEnabled && <label className="dev-switcher">Demo identity<select value={devUser} onChange={(event) => setDevUser(event.target.value)}>{demoUsers.map((email) => <option key={email}>{email}</option>)}</select></label>}<button className="icon-button" aria-label="Notifications"><PortalIcon name="bell" /></button><div className="user-chip"><span>{currentUser.display_name.split(" ").map((part) => part[0]).slice(0, 2).join("")}</span><div><strong>{currentUser.display_name}</strong><small>{experience?.label}</small></div></div>{!devAuthEnabled && <button className="quiet" onClick={signOut}>Sign out</button>}</div></header>
         {devAuthEnabled && <div className="dev-banner">Development authentication is active. Never enable this setting in UAT or production.</div>}{error && <div className="error-banner" role="alert">{error}</div>}{loading && <div className="loading">Checking your access…</div>}
-        {!loading && view === "dashboard" && dashboard && experience && <section className="dashboard-page"><div className="dashboard-hero"><div className="dashboard-hero-copy"><span className={`role-pill ${currentUser.role}`}>{currentUser.role}</span><h1>{experience.greeting}</h1><p>{experience.focus}</p><button onClick={() => void openView("assistant")}>Ask your assistant <ArrowIcon /></button></div><div className="dashboard-seal"><div><img src={mmaugLogo} alt="" /><span>SECURE<br />PORTAL</span></div></div></div><div className="metric-grid">{experience.metrics.map((metric) => <article key={metric.label}><strong>{metric.value}</strong><span>{metric.label}</span></article>)}</div><div className="dashboard-columns"><section className="workspace-section"><div className="section-title"><div><p className="eyebrow">YOUR WORKSPACE</p><h2>{dashboard.title}</h2></div><span>Assigned from PostgreSQL</span></div><div className="action-grid">{dashboard.actions.map((action, index) => <article key={action.title}><span className="action-index">0{index + 1}</span><div className="action-icon"><PortalIcon name={index === 0 ? "people" : index === 1 ? "home" : "bell"} /></div><h3>{action.title}</h3><p>{action.description}</p><button aria-label={`Open ${action.title}`}><ArrowIcon /></button></article>)}</div></section><aside className="today-panel"><div className="section-title"><div><p className="eyebrow">A GOOD PLACE TO START</p><h2>Today</h2></div><span className="today-date">{new Date().getDate()}</span></div><div className="agenda-list">{experience.agenda.map((item) => <article key={item.title}><span>{item.time}</span><div><strong>{item.title}</strong><small>{item.meta}</small></div></article>)}</div></aside></div><section className="assistant-banner"><div className="assistant-avatar"><PortalIcon name="spark" /></div><div><p className="eyebrow light">MMAUG ASSISTANT</p><h2>What would you like help with?</h2><p>I use approved guidance for your {currentUser.role} role and stay inside the school’s guardrails.</p></div><div className="assistant-suggestions">{dashboard.suggested_questions.map((question) => <button key={question} onClick={() => askSuggested(question)}>{question}<ArrowIcon /></button>)}</div></section></section>}
-        {view === "assistant" && <section className="panel assistant-panel"><div className="assistant-heading"><span><PortalIcon name="spark" /></span><div><p className="eyebrow">{currentUser.role.toUpperCase()} ASSISTANT</p><h1>Welcome. How can I help?</h1></div></div><p className="muted">I answer from approved MMAUG guidance for your database-assigned role. Do not enter passwords, access tokens, or personal information.</p><form className="assistant-form" onSubmit={(event) => void askAgent(event)}><textarea value={agentMessage} onChange={(event) => setAgentMessage(event.target.value)} maxLength={2000} required placeholder="Ask about approved school resources…" /><div><small>School guidance only · Human review for important decisions</small><button className="primary" type="submit">Send securely <ArrowIcon /></button></div></form>{agentReply && <div className="agent-reply">{agentReply}</div>}</section>}
-        {currentUser.role === "admin" && view === "people" && <section className="panel"><div className="section-heading"><div><p className="eyebrow">ADMINISTRATION</p><h1>People & access</h1><p>Approve verified registrations and assign the only role the API will trust.</p></div><span>{users.length} accounts</span></div><div className="table-wrap"><table><thead><tr><th>Person</th><th>Database role</th><th>Identity</th><th>Access</th><th>Controls</th></tr></thead><tbody>{users.map((user) => { const emailReady = user.identity_provider === "microsoft" || Boolean(user.email_verified_at); return <tr key={user.id}><td><strong>{user.display_name}</strong><small>{user.email}</small></td><td><span className={`role-pill ${user.role}`}>{user.role}</span></td><td><span className={`access-status ${emailReady ? "approved" : "pending"}`}>{user.identity_provider === "microsoft" ? "Microsoft verified" : emailReady ? "Email verified" : "Email not verified"}</span></td><td><span className={`access-status ${user.is_active ? "approved" : "pending"}`}>{user.is_active ? "Approved" : "Pending / inactive"}</span></td><td className="controls"><select aria-label={`Role for ${user.display_name}`} value={user.role} onChange={(event) => void updateUser(user, { role: event.target.value as Role })}><option value="student">Student</option><option value="teacher">Teacher</option><option value="admin">Administrator</option></select><button className="quiet" disabled={!user.is_active && !emailReady} title={!emailReady ? "Email verification is required first" : ""} onClick={() => void updateUser(user, { is_active: !user.is_active })}>{user.is_active ? "Deactivate" : "Approve & activate"}</button></td></tr>; })}</tbody></table></div></section>}
+        {!loading && view === "dashboard" && dashboard && experience && <section className="dashboard-page"><div className="dashboard-hero"><div className="dashboard-hero-copy"><span className={`role-pill ${currentUser.role}`}>{currentUser.role}</span><h1>{experience.greeting}</h1><p>{experience.focus}</p><button onClick={() => setAssistantOpen(true)}>Ask your assistant <ArrowIcon /></button></div><div className="dashboard-seal"><div><img src={mmaugLogo} alt="" /><span>SECURE<br />PORTAL</span></div></div></div><div className="metric-grid">{experience.metrics.map((metric) => <article key={metric.label}><strong>{metric.value}</strong><span>{metric.label}</span></article>)}</div><div className="dashboard-columns"><section className="workspace-section"><div className="section-title"><div><p className="eyebrow">YOUR WORKSPACE</p><h2>{dashboard.title}</h2></div><span>Assigned from PostgreSQL</span></div><div className="action-grid">{dashboard.actions.map((action, index) => <article key={action.title}><span className="action-index">0{index + 1}</span><div className="action-icon"><PortalIcon name={index === 0 ? "people" : index === 1 ? "home" : "bell"} /></div><h3>{action.title}</h3><p>{action.description}</p><button aria-label={`Open ${action.title}`}><ArrowIcon /></button></article>)}</div></section><aside className="today-panel"><div className="section-title"><div><p className="eyebrow">A GOOD PLACE TO START</p><h2>Today</h2></div><span className="today-date">{new Date().getDate()}</span></div><div className="agenda-list">{experience.agenda.map((item) => <article key={item.title}><span>{item.time}</span><div><strong>{item.title}</strong><small>{item.meta}</small></div></article>)}</div></aside></div><section className="assistant-banner"><div className="assistant-avatar"><PortalIcon name="spark" /></div><div><p className="eyebrow light">MMAUG ASSISTANT</p><h2>What would you like help with?</h2><p>I use approved guidance for your {currentUser.role} role and stay inside the school’s guardrails.</p></div><div className="assistant-suggestions">{dashboard.suggested_questions.map((question) => <button key={question} onClick={() => askSuggested(question)}>{question}<ArrowIcon /></button>)}</div></section></section>}
+        {currentUser.role === "admin" && view === "people" && <section className="panel"><div className="section-heading"><div><p className="eyebrow">ADMINISTRATION</p><h1>People & access</h1><p>Approve verified registrations and assign the only role the API will trust.</p></div><span>{users.length} accounts</span></div><div className="table-wrap"><table><thead><tr><th>Person</th><th>Database role</th><th>Identity</th><th>Access</th><th>Controls</th></tr></thead><tbody>{users.map((user) => { const emailReady = user.identity_provider === "microsoft" || Boolean(user.email_verified_at); return <tr key={user.id}><td><strong>{user.display_name}</strong><small>{user.email}</small></td><td><span className={`role-pill ${user.role}`}>{user.role}</span></td><td><span className={`access-status ${emailReady ? "approved" : "pending"}`}>{user.identity_provider === "microsoft" ? "Microsoft verified" : emailReady ? "Email verified" : "Email not verified"}</span></td><td><span className={`access-status ${user.is_active ? "approved" : "pending"}`}>{user.is_active ? "Approved" : "Pending / inactive"}</span></td><td className="controls"><select aria-label={`Role for ${user.display_name}`} value={user.role} disabled={!emailReady} title={!emailReady ? "Email verification is required first" : ""} onChange={(event) => void updateUser(user, { role: event.target.value as Role })}><option value="student">Student</option><option value="teacher">Teacher</option><option value="admin">Administrator</option></select><button className="quiet" disabled={!user.is_active && !emailReady} title={!emailReady ? "Email verification is required first" : ""} onClick={() => void updateUser(user, { is_active: !user.is_active })}>{user.is_active ? "Deactivate" : "Approve & activate"}</button></td></tr>; })}</tbody></table></div></section>}
         {currentUser.role === "admin" && view === "audit" && <section className="panel"><div className="section-heading"><div><p className="eyebrow">SECURITY</p><h1>Audit activity</h1><p>Registration requests and access changes are recorded here.</p></div><span>Latest {events.length}</span></div><div className="event-list">{events.map((event) => <article key={event.id}><span className={`outcome ${event.outcome}`} /><div><strong>{event.action.replaceAll(".", " ")}</strong><p>{new Date(event.occurred_at).toLocaleString()} · {event.target_type ?? "portal"}</p></div></article>)}</div></section>}
       </main>
+      <button className="assistant-launcher signed-in" type="button" aria-expanded={assistantOpen} aria-controls="role-assistant-drawer" onClick={() => setAssistantOpen(true)}><PortalIcon name="spark" /><span>Ask MMAUG</span></button>
+      <div className={`assistant-drawer-layer ${assistantOpen ? "open" : ""}`} aria-hidden={!assistantOpen} onMouseDown={(event) => { if (event.target === event.currentTarget) setAssistantOpen(false); }}>
+        <aside className="assistant-drawer" id="role-assistant-drawer" role="dialog" aria-modal="true" aria-labelledby="role-assistant-title">
+          <header className="assistant-drawer-header"><div><span><PortalIcon name="spark" /></span><div><p>{currentUser.role.toUpperCase()} SCHOOL GUIDE</p><h2 id="role-assistant-title">MMAUG Assistant</h2></div></div><button type="button" onClick={() => setAssistantOpen(false)} aria-label="Close assistant">×</button></header>
+          <div className="assistant-scope"><PortalIcon name="shield" /><span>Answers use approved {currentUser.role} guidance. The assistant cannot change roles, approve accounts, or reveal another person’s information.</span></div>
+          <div className="chat-transcript" aria-live="polite">
+            <div className="chat-message assistant"><span>MMAUG</span><p>Welcome, {currentUser.display_name.split(" ")[0]}. I’m ready to help within your {currentUser.role} workspace.</p></div>
+            {agentMessages.map((entry) => <div className={`chat-message ${entry.sender}`} key={entry.id}><span>{entry.sender === "assistant" ? "MMAUG" : "You"}</span><p>{entry.text}</p></div>)}
+            {agentBusy && <div className="chat-message assistant pending"><span>MMAUG</span><p>Checking the approved school guidance…</p></div>}
+          </div>
+          <form className="chat-composer" onSubmit={(event) => void askAgent(event)}><label htmlFor="role-drawer-question">Ask your assistant</label><div><textarea id="role-drawer-question" value={agentMessage} onChange={(event) => setAgentMessage(event.target.value)} maxLength={2000} required placeholder="Ask about approved school resources…" /><button className="primary" type="submit" disabled={agentBusy || !agentMessage.trim()} aria-label="Send question"><ArrowIcon /></button></div><small>School guidance only · Human review for important decisions</small></form>
+        </aside>
+      </div>
     </div>
   );
 }

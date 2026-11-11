@@ -69,6 +69,13 @@ def test_approved_local_user_receives_database_role(client: TestClient, monkeypa
     )
     assert rejected.status_code == 409
 
+    role_only_rejected = client.patch(
+        f"/api/users/{created['id']}",
+        headers=ADMIN,
+        json={"role": "teacher"},
+    )
+    assert role_only_rejected.status_code == 409
+
     verified = client.post(
         "/api/auth/verify-email",
         json={"token": verification["token"]},

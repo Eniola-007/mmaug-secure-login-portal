@@ -101,36 +101,35 @@ containing only its reviewed Markdown boundary.
 
 The Foundry administrator must:
 
-1. open the Foundry project in the Azure portal and select **Access control (IAM)**;
-2. grant `id-mmaug-secure-login-portal` **Foundry User** on the project;
-3. grant the service principal represented by `AZURE_AD_CLIENT_ID` **Foundry User** on the
-   project so the workflow can create agent versions;
-4. grant the required Storage Blob data-plane role when using a standard/BYO setup;
-5. rerun **Deploy development**; and
+1. open Foundry account `aifoundry-mmaug-development-gkt6d`, then project
+   `mmaug-school-portal`, and select **Access control (IAM)**;
+2. add **Foundry User** (role definition `53ca6127-db72-4b80-b1b0-d745d6d5456d`);
+3. choose **Managed identity → User-assigned managed identity** and select
+   `id-mmaug-secure-login-portal`;
+4. confirm principal ID `6d15404b-a6d8-4019-b638-609f1c75723d`, then select
+   **Review + assign** twice;
+5. wait several minutes for Azure RBAC propagation and rerun **Deploy development**; and
 6. verify grounded answers, role isolation, refusals, fallback, and audit metadata.
 
+The least-privilege assignment scope is:
+
+```text
+/subscriptions/9a2ab22e-5269-4da3-a16a-eeed2b0c09aa/resourceGroups/rg_mmaug_high_school/providers/Microsoft.CognitiveServices/accounts/aifoundry-mmaug-development-gkt6d/projects/mmaug-school-portal
+```
+
+The same approved managed identity is used by the API at runtime and by GitHub OIDC during
+agent provisioning. The provisioning step deliberately uses the Azure CLI session created
+by `azure/login`; it does not require an application password.
+
 `Contributor` is not sufficient for agent inference. The runtime managed identity must
-also have **Foundry User** on the Foundry account or project. The API deliberately prefers
-that managed identity at runtime; the approved service principal is retained for the
-protected provisioning workflow only.
+also have **Foundry User** on the Foundry account or project. Both the API and protected
+provisioning workflow use that managed identity; neither needs a Foundry client secret.
 
 Creating those role assignments requires **Owner**, **User Access Administrator**, or an
 equivalent role-assignment permission. Resource-group Contributor alone cannot grant RBAC.
 
 Do not put a Foundry API key or application password in the repository. Microsoft Entra
-managed identity is the preferred runtime authentication mechanism.
-
-If the administrator requires the approved Foundry service principal instead, configure
-these as GitHub `development` **environment secrets**:
-
-- `AZURE_AD_CLIENT_ID`
-- `AZURE_AD_CLIENT_SECRET`
-- `AZURE_AD_TENANT_ID`
-
-The workflow never prints these values. Terraform uses the write-only Key Vault value
-field, and the API Web App receives `AZURE_AD_CLIENT_SECRET` only as a Key Vault reference.
-Grant that service principal **Foundry User** and the required Blob data role. These
-credentials do not replace the managed identity used by GitHub OIDC to deploy Azure.
+managed identity is the runtime and deployment authentication mechanism.
 
 ## 6. Local-account email and recovery
 
@@ -140,6 +139,11 @@ is stored in GitHub or sent to the browser.
 
 - Verification and password-reset tokens are random, single-use, short-lived, and stored
   only as SHA-256 digests in PostgreSQL.
+- Every new local signup receives an email-verification message. A pre-enrolled account
+  without a local password receives a one-time password-setup message that also verifies
+  mailbox ownership.
+- Administrators cannot assign a different database role or activate a local account until
+  email verification is complete.
 - Password reset increments the account authentication version, revoking older local JWTs.
 - Registration, sign-in, verification, resend, and recovery limits persist in PostgreSQL
   and return HTTP 429 with `Retry-After` when exceeded.
