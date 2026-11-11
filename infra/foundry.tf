@@ -15,6 +15,13 @@ resource "azurerm_cognitive_account" "foundry" {
   tags = local.common_tags
 }
 
+# Cognitive Services reports creation before project management is always ready.
+# This bounded wait avoids the transient 409 returned by an immediate project create.
+resource "time_sleep" "foundry_project_readiness" {
+  depends_on      = [azurerm_cognitive_account.foundry]
+  create_duration = "75s"
+}
+
 resource "azurerm_cognitive_account_project" "portal" {
   name                 = "mmaug-school-portal"
   cognitive_account_id = azurerm_cognitive_account.foundry.id
@@ -25,6 +32,8 @@ resource "azurerm_cognitive_account_project" "portal" {
   identity {
     type = "SystemAssigned"
   }
+
+  depends_on = [time_sleep.foundry_project_readiness]
 }
 
 resource "azurerm_cognitive_deployment" "gpt_5_4_mini" {
@@ -45,6 +54,7 @@ resource "azurerm_cognitive_deployment" "gpt_5_4_mini" {
 
 locals {
   foundry_project_endpoint = "https://${azurerm_cognitive_account.foundry.custom_subdomain_name}.services.ai.azure.com/api/projects/${azurerm_cognitive_account_project.portal.name}"
+  foundry_public_agent     = trimspace(var.azure_ai_public_agent_id) != "" ? var.azure_ai_public_agent_id : "mmaug-visitor"
   foundry_student_agent    = trimspace(var.azure_ai_student_agent_id) != "" ? var.azure_ai_student_agent_id : "mmaug-student"
   foundry_teacher_agent    = trimspace(var.azure_ai_teacher_agent_id) != "" ? var.azure_ai_teacher_agent_id : "mmaug-teacher"
   foundry_admin_agent      = trimspace(var.azure_ai_admin_agent_id) != "" ? var.azure_ai_admin_agent_id : "mmaug-administrator"

@@ -18,9 +18,11 @@ application code, and returns the direct frontend Web App URL. The administrator
 creates the SPA/API registrations and configures scopes, consent, and redirect URIs.
 A second deployment injects only the resulting non-secret client IDs and enables MSAL.
 
-The portal also provides separate student, teacher, and administrator assistant
-experiences. FastAPI selects the experience from the PostgreSQL role, applies deterministic
-guardrails, and then calls a managed-identity-authenticated Microsoft Foundry prompt agent.
+The portal provides a public Visitor assistant plus separate student, teacher, and
+administrator assistant experiences. The Visitor is restricted to public service and
+account-process guidance. FastAPI selects each signed-in experience from the PostgreSQL
+role, applies deterministic guardrails, and then calls a managed-identity-authenticated
+Microsoft Foundry prompt agent.
 The approved `gpt-5.4-mini` model is grounded in curated MMAUG guidance published to a
 private Azure Storage container.
 
@@ -98,11 +100,10 @@ public entry point. It applies OWASP 3.2 managed rules in Prevention mode, route
 ### Stage 4 — grounded role assistants
 
 Terraform creates a private knowledge-base container and the workflow publishes the
-reviewed files. The Foundry administrator deploys `gpt-5.4-mini`, creates three versioned
-prompt agents with file search, and grants the App Service managed identity **Foundry
-User** plus the required Storage data-plane role. The returned project endpoint and agent
-names are protected environment variables. Until those values exist, the UI explicitly
-uses its constrained safe fallback.
+reviewed files. Terraform deploys `gpt-5.4-mini`; the protected workflow creates four
+versioned prompt agents with isolated file search. The Foundry administrator grants the
+App Service managed identity **Foundry User** plus the required Storage data-plane role.
+Until the agents are available, the API explicitly uses its constrained safe fallback.
 
 ## Authorization and data protection
 

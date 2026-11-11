@@ -33,6 +33,11 @@
   are implemented for publication to a private Azure Storage container.
 - Dashboards now include role-specific service cards, suggested assistant questions, and
   a server-side guardrail that always derives the role from PostgreSQL.
+- The public landing page now includes a separately grounded Visitor assistant limited to
+  portal, registration, verification, recovery, approval, and support navigation. It is
+  rate-limited and cannot access role guidance or personal school information.
+- A controlled first-Administrator enrollment command and Azure App Service SSH runbook
+  are implemented; there is no public self-promotion path.
 - Microsoft documentation confirms `gpt-5.4-mini` model version `2026-03-17`; the
   deployment name is parameterized for the Foundry administrator handoff.
 - Development workflow run `42759323240` completed successfully from commit `382309c`.
@@ -43,8 +48,9 @@
 - The private `stmmaugkbgkt6d/knowledge-base` container contains the five reviewed
   knowledge and guardrail files.
 - The approved Foundry service-principal credential is configured through a resolved Key
-  Vault reference. No Foundry project, project endpoint, or role-agent IDs exist yet, so
-  the server-side guarded fallback remains active.
+  Vault reference. Terraform now creates the Foundry project/model and waits for project
+  readiness before creating it, avoiding the transient Azure 409 observed in workflow run
+  `42895283734`.
 
 ## Live completion gates
 
@@ -56,6 +62,6 @@
    gateway URL to the SPA redirects.
 4. Enroll eight synthetic accounts with their real tenant and object IDs.
 5. Complete the sign-in, role-isolation, WAF, audit, recovery, and monitoring demonstration.
-6. Administrator creates the Foundry project/model deployment and three file-search
-   agents, then grants the managed identity **Foundry User** and the required Storage data
-   role. Configure the project endpoint and role agent names to replace safe fallback.
+6. Grant the managed identity and provisioning service principal **Foundry User**, rerun
+   deployment, and verify the Visitor, Student, Teacher, and Administrator file-search
+   agents plus guarded fallback behavior.

@@ -79,6 +79,10 @@ python -m app.enroll_users --file /tmp/mmaug-enrollment.json
 Use [enrollment.template.json](enrollment.template.json). Never include passwords or
 access tokens in the enrollment file.
 
+For the first authorized portal Administrator, follow the App Service console procedure
+in [first-administrator.md](first-administrator.md). This is a database application role,
+not an Entra directory role or Azure RBAC role.
+
 For local registrations, approval is in the authenticated portal: **Administrator
 dashboard → People & access**. A local user must complete the emailed ownership check
 before **Approve & activate** becomes available. The administrator chooses the PostgreSQL
@@ -91,8 +95,9 @@ Markdown files from the repository. It obtains a storage key only for that uploa
 it immediately, and does not store it in GitHub or application settings.
 
 Terraform creates the Foundry resource, `mmaug-school-portal` project, and the approved
-`gpt-5.4-mini` version `2026-03-17` deployment. The workflow then attempts to create three
-role-scoped prompt agents and separate file-search stores from the reviewed Markdown.
+`gpt-5.4-mini` version `2026-03-17` deployment. The workflow then attempts to create one
+public visitor agent plus three role-scoped agents, each with a separate file-search store
+containing only its reviewed Markdown boundary.
 
 The Foundry administrator must:
 

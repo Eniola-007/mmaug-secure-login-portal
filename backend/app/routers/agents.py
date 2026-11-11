@@ -1,10 +1,14 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from app.agent_guardrails import (
+    PUBLIC_SAFE_DEMO_RESPONSE,
+    PUBLIC_SAFETY_NOTICE,
     SAFE_DEMO_RESPONSES,
     SAFETY_NOTICE,
     foundry_input,
+    public_foundry_input,
+    public_refusal_for,
     refusal_for,
 )
 from app.audit import record_event
@@ -12,12 +16,13 @@ from app.auth import get_current_user
 from app.config import get_settings
 from app.db import get_db
 from app.models import Role, User
-from app.schemas import AgentRequest, AgentResponse
+from app.rate_limit import enforce_rate_limit
+from app.schemas import AgentRequest, AgentResponse, PublicAgentResponse
 
 router = APIRouter(prefix="/agent", tags=["agents"])
 
 
-def _ask_foundry(project_endpoint: str, agent_name: str, user: User, question: str) -> str:
+def _ask_foundry(project_endpoint: str, agent_name: str, prompt: str) -> str:
     from azure.ai.projects import AIProjectClient
     from azure.identity import ClientSecretCredential, DefaultAzureCredential
 
@@ -38,10 +43,70 @@ def _ask_foundry(project_endpoint: str, agent_name: str, user: User, question: s
     conversation = openai.conversations.create()
     response = openai.responses.create(
         conversation=conversation.id,
-        input=foundry_input(user.role, question),
+        input=prompt,
         extra_body={"agent_reference": {"name": agent_name, "type": "agent_reference"}},
     )
     return response.output_text
+
+
+@router.post("/public", response_model=PublicAgentResponse)
+def public_message(
+    payload: AgentRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> PublicAgentResponse:
+    enforce_rate_limit(
+        db,
+        request,
+        scope="public-agent",
+        limit=20,
+        window_seconds=3600,
+    )
+    settings = get_settings()
+    refusal = public_refusal_for(payload.message)
+    if refusal:
+        record_event(
+            db,
+            action="agent.public_refused",
+            target_type="assistant",
+            target_id="visitor",
+            outcome="denied",
+            details={"audience": "visitor", "reason": "guardrail"},
+        )
+        return PublicAgentResponse(
+            mode="guardrail",
+            response=refusal,
+            safety_notice=PUBLIC_SAFETY_NOTICE,
+        )
+
+    mode = "safe-demo"
+    response = PUBLIC_SAFE_DEMO_RESPONSE
+    outcome = "success"
+    if settings.azure_ai_project_endpoint and settings.azure_ai_public_agent_id:
+        try:
+            response = _ask_foundry(
+                settings.azure_ai_project_endpoint,
+                settings.azure_ai_public_agent_id,
+                public_foundry_input(payload.message),
+            )
+            mode = "foundry"
+        except Exception:
+            mode = "safe-fallback"
+            outcome = "fallback"
+
+    record_event(
+        db,
+        action="agent.public_message",
+        target_type="assistant",
+        target_id="visitor",
+        outcome=outcome,
+        details={"audience": "visitor", "mode": mode},
+    )
+    return PublicAgentResponse(
+        mode=mode,
+        response=response,
+        safety_notice=PUBLIC_SAFETY_NOTICE,
+    )
 
 
 @router.post("/message", response_model=AgentResponse)
@@ -82,7 +147,9 @@ def message(
     if configured:
         try:
             response = _ask_foundry(
-                settings.azure_ai_project_endpoint, agent_name, user, payload.message
+                settings.azure_ai_project_endpoint,
+                agent_name,
+                foundry_input(user.role, payload.message),
             )
             mode = "foundry"
         except Exception:

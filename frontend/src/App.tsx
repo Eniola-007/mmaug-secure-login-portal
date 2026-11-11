@@ -40,6 +40,7 @@ type View = "dashboard" | "assistant" | "people" | "audit";
 type AuthMode = "signin" | "signup" | "forgot" | "reset";
 interface TokenResponse { access_token: string; token_type: string; expires_in: number }
 interface RegistrationResponse { status: string; message: string }
+interface PublicAgentResponse { audience: string; mode: string; response: string; safety_notice: string }
 
 function MicrosoftMark() {
   return <span className="microsoft-mark" aria-hidden="true"><i /><i /><i /><i /></span>;
@@ -112,11 +113,33 @@ function PublicLanding({ openAuth, onMicrosoftRegistration, onMicrosoftSignout, 
   openAuth: (mode: AuthMode) => void; onMicrosoftRegistration: () => void; onMicrosoftSignout: () => void;
   microsoftEmail: string; accessError: string; accessMessage: string; loading: boolean;
 }) {
+  const [visitorMessage, setVisitorMessage] = useState("");
+  const [visitorReply, setVisitorReply] = useState("Welcome to MMAUG High School. Ask me about the portal, creating an account, signing in, verification, or account recovery.");
+  const [visitorError, setVisitorError] = useState("");
+  const [visitorBusy, setVisitorBusy] = useState(false);
+
+  async function askVisitor(event: FormEvent) {
+    event.preventDefault();
+    setVisitorBusy(true); setVisitorError("");
+    try {
+      const result = await publicApiRequest<PublicAgentResponse>("/api/agent/public", {
+        method: "POST",
+        body: JSON.stringify({ message: visitorMessage }),
+      });
+      setVisitorReply(`${result.response} ${result.safety_notice}`);
+      setVisitorMessage("");
+    } catch (caught) {
+      setVisitorError(caught instanceof Error ? caught.message : "The visitor assistant is unavailable");
+    } finally {
+      setVisitorBusy(false);
+    }
+  }
+
   return (
     <div className="public-site">
       <header className="public-header">
         <a className="public-brand" href="#top" aria-label="MMAUG High School home"><img src={mmaugLogo} alt="" /><span>MMAUG <small>HIGH SCHOOL</small></span></a>
-        <nav className="public-nav" aria-label="Public navigation"><a href="#experience">Portal experience</a><a href="#community">Our community</a><a href="#security">Security</a></nav>
+        <nav className="public-nav" aria-label="Public navigation"><a href="#experience">Portal experience</a><a href="#community">Our community</a><a href="#assistant">Ask MMAUG</a><a href="#security">Security</a></nav>
         <div className="header-actions"><button className="link-button" onClick={() => openAuth("signin")}>Sign in</button><button className="primary compact" onClick={() => openAuth("signup")}>Create account</button></div>
       </header>
       <main id="top">
@@ -131,7 +154,21 @@ function PublicLanding({ openAuth, onMicrosoftRegistration, onMicrosoftSignout, 
           <article className="audience-card teacher-card"><div className="audience-number">02</div><div className="audience-art"><span>TEACHER</span><div className="teacher-lines"><i /><i /><i /><i /></div></div><h3>For teachers</h3><p>Approved classroom resources, teaching guidance, and privacy-aware assistance without exposing student records.</p><button onClick={() => openAuth("signup")}>Enter the workspace <ArrowIcon /></button></article>
           <article className="audience-card admin-card"><div className="audience-number">03</div><div className="audience-art"><span>ADMIN</span><div className="admin-grid"><i /><i /><i /><i /></div></div><h3>For administrators</h3><p>Account approval, database role assignment, audit activity, and service oversight from a clear control centre.</p><button onClick={() => openAuth("signin")}>Manage securely <ArrowIcon /></button></article>
         </section>
-        <section className="assistant-story"><div className="assistant-orbit"><div className="orbit-ring"><img src={mmaugLogo} alt="MMAUG" /></div><span className="orbit-chip chip-one">STUDENT</span><span className="orbit-chip chip-two">TEACHER</span><span className="orbit-chip chip-three">ADMIN</span></div><div className="assistant-copy"><p className="eyebrow light">YOUR SCHOOL GUIDE</p><h2>Helpful answers.<br />Clear boundaries.</h2><p>The MMAUG assistant welcomes every approved user and answers from the school knowledge base for their assigned role. Guardrails keep it within school guidance—it cannot change permissions or reveal another person’s records.</p><div className="assistant-points"><span><i>✓</i> Answers from approved school information</span><span><i>✓</i> Different guidance for each role</span><span><i>✓</i> Human oversight for important decisions</span></div><button className="primary large" onClick={() => openAuth("signup")}>Get started <ArrowIcon /></button></div></section>
+        <section className="assistant-story" id="assistant">
+          <div className="assistant-orbit"><div className="orbit-ring"><img src={mmaugLogo} alt="MMAUG" /></div><span className="orbit-chip chip-one">STUDENT</span><span className="orbit-chip chip-two">TEACHER</span><span className="orbit-chip chip-three">ADMIN</span></div>
+          <div className="assistant-copy"><p className="eyebrow light">YOUR SCHOOL GUIDE</p><h2>Helpful answers.<br />Clear boundaries.</h2><p>Visitors can ask about the portal and account process here. After sign-in, the assistant automatically follows the Student, Teacher, or Administrator role stored in PostgreSQL.</p><div className="assistant-points"><span><i>✓</i> Answers from approved school information</span><span><i>✓</i> Separate public and role-specific knowledge</span><span><i>✓</i> Human oversight for important decisions</span></div>
+            <div className="visitor-assistant">
+              <div className="visitor-assistant-heading"><span><PortalIcon name="spark" /></span><div><strong>Ask the MMAUG visitor assistant</strong><small>Public portal guidance only</small></div></div>
+              <div className="visitor-reply" aria-live="polite">{visitorReply}</div>
+              {visitorError && <div className="visitor-error" role="alert">{visitorError}</div>}
+              <form onSubmit={(event) => void askVisitor(event)}>
+                <label htmlFor="visitor-question">Your question</label>
+                <div><input id="visitor-question" value={visitorMessage} onChange={(event) => setVisitorMessage(event.target.value)} maxLength={2000} required placeholder="How do I create an account?" /><button className="primary" type="submit" disabled={visitorBusy}>{visitorBusy ? "Asking…" : "Ask"}</button></div>
+              </form>
+              <small>Do not enter passwords, security codes, or personal school information.</small>
+            </div>
+          </div>
+        </section>
         <section className="security-section" id="security"><div><p className="eyebrow">SECURITY BY DESIGN</p><h2>Your identity opens the door.<br />The database decides the room.</h2></div><div className="security-steps"><article><span>1</span><div><strong>Choose how to sign in</strong><p>Use a Microsoft account or create a portal account with email and password.</p></div></article><article><span>2</span><div><strong>An administrator approves access</strong><p>New registrations cannot select privileged roles or activate themselves.</p></div></article><article><span>3</span><div><strong>Your dashboard follows your DB role</strong><p>Student, Teacher, and Administrator permissions are enforced by the API.</p></div></article></div></section>
         <section className="closing-cta"><img src={mmaugLogo} alt="" /><p className="eyebrow light">WELCOME TO MMAUG HIGH SCHOOL</p><h2>Ready to begin your school day?</h2><p>Create an account with or without Microsoft. Your administrator will approve the right workspace.</p><div><button className="primary large" onClick={() => openAuth("signup")}>Create your account</button><button className="link-light" onClick={() => openAuth("signin")}>Sign in instead →</button></div></section>
       </main>

@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     azure_ad_tenant_id: str = ""
     azure_ai_project_endpoint: str = ""
     azure_ai_model_deployment_name: str = "gpt-5.4-mini"
+    azure_ai_public_agent_id: str = ""
     azure_ai_student_agent_id: str = ""
     azure_ai_teacher_agent_id: str = ""
     azure_ai_admin_agent_id: str = ""

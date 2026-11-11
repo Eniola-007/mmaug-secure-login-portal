@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const edge = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
-const port = 9333;
+const port = 9300 + (process.pid % 500);
 const profile = join(tmpdir(), `mmaug-edge-mobile-${process.pid}`);
 const targetUrl = process.argv[2] ?? "http://127.0.0.1:5173/";
 const browser = spawn(edge, [
@@ -85,5 +85,9 @@ try {
     windowsHide: true,
     stdio: "ignore",
   });
-  rmSync(profile, { recursive: true, force: true });
+  try {
+    rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+  } catch {
+    // Edge Crashpad may briefly retain a report file after the browser exits.
+  }
 }

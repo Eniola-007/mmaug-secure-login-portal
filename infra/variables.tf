@@ -61,6 +61,12 @@ variable "azure_ai_model_deployment_name" {
   default     = "gpt-5.4-mini"
 }
 
+variable "azure_ai_public_agent_id" {
+  description = "Versioned Foundry prompt-agent name for unauthenticated visitor guidance."
+  type        = string
+  default     = ""
+}
+
 variable "azure_ai_student_agent_id" {
   description = "Versioned Foundry prompt-agent name for the student experience."
   type        = string

@@ -61,6 +61,7 @@ jobs:
           TF_VAR_entra_spa_client_id: ${{ vars.ENTRA_SPA_CLIENT_ID || '00000000-0000-0000-0000-000000000000' }}
           TF_VAR_azure_ai_project_endpoint: ${{ vars.AZURE_AI_PROJECT_ENDPOINT }}
           TF_VAR_azure_ai_model_deployment_name: ${{ vars.AZURE_AI_MODEL_DEPLOYMENT_NAME || 'gpt-5.4-mini' }}
+          TF_VAR_azure_ai_public_agent_id: ${{ vars.AZURE_AI_PUBLIC_AGENT_ID }}
           TF_VAR_azure_ai_student_agent_id: ${{ vars.AZURE_AI_STUDENT_AGENT_ID }}
           TF_VAR_azure_ai_teacher_agent_id: ${{ vars.AZURE_AI_TEACHER_AGENT_ID }}
           TF_VAR_azure_ai_admin_agent_id: ${{ vars.AZURE_AI_ADMIN_AGENT_ID }}

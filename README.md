@@ -32,7 +32,8 @@ API. Reviewed assistant source material is in [`knowledge-base`](knowledge-base)
 
 Self-registration never accepts a role. All new requests start as inactive Student
 records; only the Administrator dashboard can activate an account or assign Teacher or
-Administrator.
+Administrator. The controlled first-admin procedure is documented in
+[docs/first-administrator.md](docs/first-administrator.md).
 
 The proposed public endpoint is
 `https://mmaug-secure-portal.northeurope.cloudapp.azure.com`, reserved on Standard static

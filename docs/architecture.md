@@ -67,16 +67,19 @@ paths produce the same Student, Teacher, or Administrator dashboard boundary.
 
 ## Role-aware assistant and knowledge boundary
 
-The API selects the assistant from the PostgreSQL role after authentication; the browser
-cannot select or assert a role. Student, teacher, and administrator dashboards each expose
-their own guarded assistant experience.
+The public landing page uses a visitor agent limited to service, sign-in, registration,
+verification, recovery, and support navigation. It cannot access role guidance or personal
+school information. After authentication, the API selects the assistant from the
+PostgreSQL role; the browser cannot select or assert a role. Student, teacher, and
+administrator dashboards each expose their own guarded assistant experience.
 
 - Terraform creates the Foundry project and approved `gpt-5.4-mini` deployment. A protected
   workflow creates role-scoped, versioned prompt agents after a directory administrator
   grants the approved service principal **Foundry User** on the project.
 - Curated Markdown guidance is published to the private `knowledge-base` container in an
-  Azure Storage account and ingested into separate Student, Teacher, and Administrator
-  Foundry file-search vector stores so each agent sees only its approved role material.
+  Azure Storage account and ingested into separate Visitor, Student, Teacher, and
+  Administrator Foundry file-search vector stores so each agent sees only its approved
+  material.
 - The App Service user-assigned managed identity is the preferred Foundry credential. The
   administrator-approved service principal is also supported when the three `AZURE_AD_*`
   GitHub Environment secrets are configured; its secret is written directly to Key Vault

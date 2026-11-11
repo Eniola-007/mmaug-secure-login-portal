@@ -5,6 +5,17 @@ SAFETY_NOTICE = (
     "make school decisions, or reveal another person's data."
 )
 
+PUBLIC_SAFETY_NOTICE = (
+    "The visitor assistant provides public portal guidance only. Sign in for role-specific "
+    "help, and never enter passwords, security codes, or personal school information."
+)
+
+PUBLIC_SAFE_DEMO_RESPONSE = (
+    "Welcome to the MMAUG High School secure portal. I can explain the service, how to "
+    "sign up or sign in, email verification, account recovery, and the administrator "
+    "approval process. Sign in after approval for guidance specific to your school role."
+)
+
 ROLE_BOUNDARIES = {
     Role.STUDENT: (
         "Help with the student's own portal navigation, approved learning resources, "
@@ -71,6 +82,18 @@ _SECRET_MARKERS = (
     "security code",
 )
 
+_AUTHENTICATED_ONLY_MARKERS = (
+    "my grade",
+    "my attendance",
+    "my timetable",
+    "my class",
+    "my student",
+    "student record",
+    "teacher record",
+    "approve my account",
+    "assign my role",
+)
+
 
 def refusal_for(message: str) -> str | None:
     normalized = " ".join(message.casefold().split())
@@ -85,6 +108,19 @@ def refusal_for(message: str) -> str | None:
     return None
 
 
+def public_refusal_for(message: str) -> str | None:
+    refusal = refusal_for(message)
+    if refusal:
+        return refusal
+    normalized = " ".join(message.casefold().split())
+    if any(marker in normalized for marker in _AUTHENTICATED_ONLY_MARKERS):
+        return (
+            "I cannot access personal or role-specific school information from the public "
+            "site. Sign in to your approved dashboard or contact an authorized school staff member."
+        )
+    return None
+
+
 def foundry_input(role: Role, message: str) -> str:
     return (
         f"Authenticated PostgreSQL portal role: {role.value}.\n"
@@ -93,4 +129,17 @@ def foundry_input(role: Role, message: str) -> str:
         "private records, or information outside this role. If the answer is not in the "
         "knowledge base, say so and refer the user to an authorized school staff member.\n"
         f"User question: {message}"
+    )
+
+
+def public_foundry_input(message: str) -> str:
+    return (
+        "Audience: unauthenticated public visitor.\n"
+        "Allowed boundary: public service introduction, sign-up, sign-in, email verification, "
+        "password recovery, administrator approval, and general support navigation.\n"
+        "Use only the approved public MMAUG service overview and guardrails. Do not provide "
+        "student, teacher, or administrator workspace guidance; do not access personal records; "
+        "and do not request personal information or credentials. If a question needs an "
+        "authenticated role, ask the visitor to sign in or contact authorized school staff.\n"
+        f"Visitor question: {message}"
     )

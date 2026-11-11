@@ -80,11 +80,35 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Enroll Microsoft work, school, guest, or personal accounts."
     )
-    parser.add_argument("--file", required=True, type=Path, help="Path to enrollment JSON")
+    parser.add_argument("--file", type=Path, help="Path to enrollment JSON")
+    parser.add_argument("--tenant-id", help="Single user's immutable Entra tenant ID")
+    parser.add_argument("--object-id", help="Single user's immutable Entra object ID")
+    parser.add_argument("--email", help="Single user's portal email")
+    parser.add_argument("--display-name", help="Single user's display name")
+    parser.add_argument("--role", choices=[role.value for role in Role], help="Portal DB role")
     parser.add_argument("--dry-run", action="store_true", help="Validate and roll back changes")
     args = parser.parse_args()
 
-    records = load_enrollments(args.file)
+    single_values = {
+        "tenant_id": args.tenant_id,
+        "object_id": args.object_id,
+        "email": args.email,
+        "display_name": args.display_name,
+        "role": args.role,
+    }
+    supplied_single = [name for name, value in single_values.items() if value]
+    if args.file and supplied_single:
+        parser.error("Use either --file or the single-user options, not both")
+    if args.file:
+        records = load_enrollments(args.file)
+    elif len(supplied_single) == len(single_values):
+        records = [_record(single_values)]
+    else:
+        parser.error(
+            "Provide --file, or all of --tenant-id, --object-id, --email, "
+            "--display-name, and --role"
+        )
+
     with SessionLocal() as db:
         changed = enroll_users(db, records)
         if args.dry_run:

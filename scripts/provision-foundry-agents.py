@@ -12,6 +12,7 @@ KNOWLEDGE = ROOT / "knowledge-base"
 MODEL = os.environ.get("FOUNDRY_MODEL_DEPLOYMENT_NAME", "gpt-5.4-mini")
 
 ROLE_FILES = {
+    "visitor": ["00-service-overview.md", "90-agent-guardrails.md"],
     "student": ["00-service-overview.md", "10-student-guidance.md", "90-agent-guardrails.md"],
     "teacher": ["00-service-overview.md", "20-teacher-guidance.md", "90-agent-guardrails.md"],
     "administrator": [
@@ -22,6 +23,11 @@ ROLE_FILES = {
 }
 
 ROLE_BOUNDARIES = {
+    "visitor": (
+        "Public service introduction, sign-up, sign-in, email verification, account "
+        "recovery, administrator approval, and general support navigation. No dashboard "
+        "or role-specific guidance and no personal school information."
+    ),
     "student": "Student portal navigation, study guidance, approved resources, and support routes.",
     "teacher": "Teaching resources, classroom workflow, and privacy-safe staff guidance.",
     "administrator": "Enrollment, database role mapping, auditing, and portal operations.",

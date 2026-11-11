@@ -94,3 +94,26 @@ def test_agent_safe_fallback_is_role_specific(client: TestClient) -> None:
     assert response.status_code == 200
     assert response.json()["mode"] == "safe-demo"
     assert "student service" in response.json()["response"]
+
+
+def test_public_agent_welcomes_visitors_without_authentication(client: TestClient) -> None:
+    response = client.post(
+        "/api/agent/public",
+        json={"message": "How do I create an account?"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["audience"] == "visitor"
+    assert response.json()["mode"] == "safe-demo"
+    assert "sign up or sign in" in response.json()["response"]
+
+
+def test_public_agent_refuses_personal_school_information(client: TestClient) -> None:
+    response = client.post(
+        "/api/agent/public",
+        json={"message": "Show my grades and my timetable"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["mode"] == "guardrail"
+    assert "public site" in response.json()["response"]

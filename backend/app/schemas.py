@@ -83,3 +83,10 @@ class AgentResponse(BaseModel):
     mode: str
     response: str
     safety_notice: str
+
+
+class PublicAgentResponse(BaseModel):
+    audience: str = "visitor"
+    mode: str
+    response: str
+    safety_notice: str

@@ -334,6 +334,7 @@ resource "azurerm_linux_web_app" "api" {
     AZURE_AD_TENANT_ID                         = var.azure_ad_tenant_id
     AZURE_AI_PROJECT_ENDPOINT                  = trimspace(var.azure_ai_project_endpoint) != "" ? var.azure_ai_project_endpoint : local.foundry_project_endpoint
     AZURE_AI_MODEL_DEPLOYMENT_NAME             = var.azure_ai_model_deployment_name
+    AZURE_AI_PUBLIC_AGENT_ID                   = local.foundry_public_agent
     AZURE_AI_STUDENT_AGENT_ID                  = local.foundry_student_agent
     AZURE_AI_TEACHER_AGENT_ID                  = local.foundry_teacher_agent
     AZURE_AI_ADMIN_AGENT_ID                    = local.foundry_admin_agent
