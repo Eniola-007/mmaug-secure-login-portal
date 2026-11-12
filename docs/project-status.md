@@ -1,4 +1,4 @@
-# Project status — 11 November 2026
+# Project status — 12 November 2026
 
 ## Live and verified
 
@@ -16,8 +16,8 @@
   check includes a live database query.
 - Azure Communication Services Email is configured through managed identity; recent send
   requests were accepted and final operation status is now checked by the application.
-- Key Vault, Application Insights, Log Analytics, private knowledge storage, Foundry
-  account/project and `gpt-5.4-mini` deployment are provisioned.
+- Key Vault, Application Insights, Log Analytics, private knowledge storage and the legacy
+  North Europe Foundry account/project are provisioned.
 - The frontend and README display the required MMUAG Bootcamp educational-use caveat.
 - CI passes 34 backend tests, backend lint, frontend lint and production build for the
   current account-lifecycle feature set.
@@ -26,18 +26,19 @@
 
 - Visitor, Student, Teacher and Administrator assistant interfaces and deterministic
   guardrails are live.
-- The Foundry endpoint and role-agent names are configured, but current RBAC evidence for
-  managed-identity principal `6d15404b-a6d8-4019-b638-609f1c75723d` shows Contributor
-  only. Live model inference therefore remains a completion gate; the constrained safe
-  fallback protects the user experience.
+- The live public assistant still returns `safe-demo` for ordinary requests; a successful
+  Foundry-agent response is not verified.
 
 ## Pending administrator actions
 
 1. Create the Microsoft Entra SPA/API registrations, delegated scope, consent and redirect
    URIs, then provide `ENTRA_SPA_CLIENT_ID` and `ENTRA_API_CLIENT_ID` as GitHub environment
    variables. The deployed API client ID is currently the zero UUID.
-2. Grant **Foundry User** to `id-mmaug-secure-login-portal` at the Foundry project or
-   account scope, wait for propagation, rerun deployment and test grounded role agents.
+2. Merge and deploy the Sweden Central Foundry Agent branch with provisioning disabled.
+3. Grant **Foundry User** to `id-mmaug-secure-login-portal` on the new Foundry project,
+   wait for propagation, then rerun deployment with agent provisioning enabled.
+4. Verify the live public assistant returns `mode: "foundry"` and test each authenticated
+   role's isolated knowledge boundary.
 
 Direct App Service HTTPS is the current and documented public ingress.
 

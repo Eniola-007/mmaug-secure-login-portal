@@ -43,7 +43,23 @@ output "foundry_project_endpoint" {
 }
 
 output "foundry_model_deployment_name" {
-  value = azurerm_cognitive_deployment.gpt_5_4_mini.name
+  value = azurerm_cognitive_deployment.gpt_5_4_mini_agents.name
+}
+
+output "foundry_agent_account_name" {
+  value = azurerm_cognitive_account.foundry_agents.name
+}
+
+output "foundry_agent_project_name" {
+  value = azurerm_cognitive_account_project.portal_agents.name
+}
+
+output "foundry_agent_project_resource_id" {
+  value = azurerm_cognitive_account_project.portal_agents.id
+}
+
+output "runtime_identity_principal_id" {
+  value = data.azurerm_user_assigned_identity.runtime.principal_id
 }
 
 output "portal_url" {

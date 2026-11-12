@@ -27,8 +27,8 @@ The deployed components are:
   administrator alerts;
 - workspace-based Application Insights and Log Analytics;
 - a private knowledge-base Storage account and container; and
-- a Microsoft Foundry project with the `gpt-5.4-mini` model deployment, currently outside
-  the active runtime path while its data-plane authorization is validated.
+- the legacy North Europe Microsoft Foundry project and model deployment, currently
+  outside the active runtime path.
 
 The current public ingress is the HTTPS endpoint supplied by Azure App Service. The
 current-state diagram contains only components and paths that are working now.
@@ -88,13 +88,12 @@ selects the signed-in assistant from the PostgreSQL role. Deterministic pre-mode
 guardrails refuse prompt override, credential, cross-user-data and privileged-action
 requests. Agents receive no state-changing tools.
 
-The Foundry account, project and `gpt-5.4-mini` deployment are live. Reviewed Visitor,
-Student, Teacher, Administrator and guardrail Markdown files are published by the
-deployment workflow. Runtime inference through the user-assigned identity remains a
-completion gate: current Azure RBAC evidence shows Contributor but not an effective
-**Foundry User** assignment for principal
-`6d15404b-a6d8-4019-b638-609f1c75723d`. Until that role is effective and grounded-agent
-tests pass, the API uses its constrained role-specific safe fallback.
+The live API has not yet been verified against a Foundry Agent; ordinary questions still
+return the safe demo/fallback. A pending branch change adds a separate Sweden Central
+Foundry Agent Service project with four agents and isolated File Search stores while
+keeping the web app and PostgreSQL in North Europe. The migration requires a successful
+deployment, **Foundry User** on the new project for the API's user-assigned identity, and
+grounding/isolation tests before the website can be described as agent-backed.
 
 ## Deployment and identity boundary
 
@@ -112,7 +111,8 @@ These items are documented here rather than shown as active architecture compone
 
 1. Create and configure the Microsoft Entra SPA/API registrations and redeploy with their
    client IDs.
-2. Grant the API managed identity **Foundry User** on the Foundry project or account,
-   allow propagation, redeploy agents and complete grounding/isolation tests.
+2. Merge and deploy the Sweden Central agent branch, grant the API managed identity
+   **Foundry User** on the new Foundry project, allow propagation, provision agents, and
+   complete grounding/isolation tests.
 3. Complete privacy, retention, backup/restore, penetration, accessibility, incident
    response and operational-ownership reviews before considering real student data.

@@ -1,8 +1,9 @@
 # Deployment runbook
 
 Current development state: the frontend and API App Services, private PostgreSQL, email,
-monitoring, knowledge storage and Foundry project/model are deployed. Microsoft client
-IDs and effective runtime Foundry RBAC remain completion gates.
+monitoring, knowledge storage, and legacy North Europe Foundry resources are deployed.
+The Sweden Central Foundry Agent project is a pending branch change and is not live.
+Microsoft client IDs and Foundry RBAC remain completion gates.
 
 ## 1. Approved deployment identity
 
@@ -12,11 +13,13 @@ IDs and effective runtime Foundry RBAC remain completion gates.
 - Region: `northeurope`
 - UAMI: `id-mmaug-secure-login-portal`
 - UAMI client ID: `9724b573-ba41-4fc3-86ee-db1f6a892d69`
+- UAMI principal ID: `6d15404b-a6d8-4019-b638-609f1c75723d`
 - OIDC subject: `repo:Eniola-007@78024150/mmaug-secure-login-portal@1450348387:environment:development`
 
 The identity has Contributor at resource-group scope. It deploys Azure infrastructure and
 application packages. It has no Microsoft Graph directory role and does not create app
-registrations or tenant-wide consent.
+registrations or tenant-wide consent. The workflow verifies that its OIDC client ID matches
+the API's user-assigned managed identity client ID.
 
 ## 2. Stage-one deployment
 
@@ -35,6 +38,7 @@ Run the `Deploy development` GitHub workflow. It:
 
 Required GitHub `development` variables for stage one:
 
+- `AZURE_MANAGED_IDENTITY_CLIENT_ID` (must match the runtime UAMI client ID above)
 - `AZURE_TENANT_ID`
 - `AZURE_SUBSCRIPTION_ID`
 
@@ -93,45 +97,31 @@ role there; a user cannot approve or promote their own registration.
 
 ## 5. Foundry knowledge and role agents
 
-The workflow creates a private `knowledge-base` Blob container and uploads the reviewed
-Markdown files from the repository. It obtains a storage key only for that upload, masks
-it immediately, and does not store it in GitHub or application settings.
+The workflow uploads reviewed Markdown to the private `knowledge-base` Blob container and
+masks the storage key immediately. This copy is for deployment/storage; it does not itself
+populate Foundry File Search.
 
-Terraform creates the Foundry resource, `mmaug-school-portal` project, and the approved
-`gpt-5.4-mini` version `2026-03-17` deployment. The workflow then attempts to create one
-public visitor agent plus three role-scoped agents, each with a separate file-search store
-containing only its reviewed Markdown boundary.
+The branch Terraform creates a separate Sweden Central Foundry account/project and
+`gpt-5.4-mini` deployment while preserving the existing North Europe resources. The first
+workflow run must leave **Provision role-scoped Foundry Agents and File Search** unchecked.
+After Terraform succeeds, the workflow summary reports the project name and resource ID
+and the API managed-identity principal ID.
 
-Current role-assignment evidence for managed-identity principal
-`6d15404b-a6d8-4019-b638-609f1c75723d` shows Contributor only. The Foundry administrator
-must:
+An authorized Azure administrator must grant **Foundry User** on the new project to
+`id-mmaug-secure-login-portal` (principal ID shown in the workflow summary). Open the
+project's **Access control (IAM)**, select **Add role assignment**, choose **Foundry User**,
+select **Managed identity → User-assigned managed identity**, then choose that identity
+from `rg_mmaug_high_school` and confirm the principal ID before assigning. Assign at the
+project scope, not the subscription or whole resource group. This role allows the runtime
+API to invoke agents and allows the protected GitHub workflow to create and update them.
+The workflow fails early unless its OIDC client ID matches the runtime identity.
 
-1. open Foundry account `aifoundry-mmaug-development-gkt6d`, then project
-   `mmaug-school-portal`, and select **Access control (IAM)**;
-2. add **Foundry User** (role definition `53ca6127-db72-4b80-b1b0-d745d6d5456d`);
-3. choose **Managed identity → User-assigned managed identity** and select
-   `id-mmaug-secure-login-portal`;
-4. confirm principal ID `6d15404b-a6d8-4019-b638-609f1c75723d`, then select
-   **Review + assign** twice;
-5. wait several minutes for Azure RBAC propagation and rerun **Deploy development**; and
-6. verify grounded answers, role isolation, refusals, fallback, and audit metadata.
-
-The least-privilege assignment scope is:
-
-```text
-/subscriptions/9a2ab22e-5269-4da3-a16a-eeed2b0c09aa/resourceGroups/rg_mmaug_high_school/providers/Microsoft.CognitiveServices/accounts/aifoundry-mmaug-development-gkt6d/projects/mmaug-school-portal
-```
-
-The same approved managed identity is used by the API at runtime and by GitHub OIDC during
-agent provisioning. The provisioning step deliberately uses the Azure CLI session created
-by `azure/login`; it does not require an application password.
-
-`Contributor` is not sufficient for agent inference. The runtime managed identity must
-also have **Foundry User** on the Foundry account or project. Both the API and protected
-provisioning workflow use that managed identity; neither needs a Foundry client secret.
-
-Creating those role assignments requires **Owner**, **User Access Administrator**, or an
-equivalent role-assignment permission. Resource-group Contributor alone cannot grant RBAC.
+Role assignment requires **Owner**, **User Access Administrator**, or an equivalent role
+assignment permission; Resource Group Contributor alone cannot grant RBAC. Wait for role
+propagation, then rerun the workflow with agent provisioning checked. It creates four
+agents (visitor, student, teacher, administrator), each with an isolated File Search
+store. The deployment smoke test fails unless the public assistant returns
+`mode: "foundry"`.
 
 Do not put a Foundry API key or application password in the repository. Microsoft Entra
 managed identity is the runtime and deployment authentication mechanism.
@@ -182,6 +172,7 @@ migration and a live PostgreSQL query both succeed.
 8. Application Insights records expected telemetry.
 9. The repository contains no Azure client secret or publish profile.
 10. The knowledge container is private and contains only reviewed files.
-11. Each role agent stays inside its server-selected boundary and refuses cross-user data.
+11. The public assistant returns `mode: "foundry"` and each role agent stays inside its
+    server-selected boundary and refuses cross-user data.
 12. Local signup requires email verification before administrator activation.
 13. Password reset revokes an older local session and public auth endpoints rate-limit.

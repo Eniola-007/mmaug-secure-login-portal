@@ -12,6 +12,13 @@ ROLE_FILES = {
     ),
 }
 
+AGENT_NAMES = {
+    "visitor": "mmaug-visitor",
+    "student": "mmaug-student",
+    "teacher": "mmaug-teacher",
+    "admin": "mmaug-admin",
+}
+
 
 def _knowledge_directory() -> Path:
     app_file = Path(__file__).resolve()

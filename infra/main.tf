@@ -321,8 +321,12 @@ resource "azurerm_linux_web_app" "api" {
     AZURE_CLIENT_ID                            = data.azurerm_user_assigned_identity.runtime.client_id
     AZURE_AD_CLIENT_ID                         = var.azure_ad_client_id
     AZURE_AD_TENANT_ID                         = var.azure_ad_tenant_id
-    AZURE_OPENAI_ENDPOINT                      = "https://${azurerm_cognitive_account.foundry.custom_subdomain_name}.openai.azure.com"
+    AZURE_AI_PROJECT_ENDPOINT                  = local.foundry_project_endpoint
     AZURE_AI_MODEL_DEPLOYMENT_NAME             = var.azure_ai_model_deployment_name
+    AZURE_AI_PUBLIC_AGENT_ID                   = "mmaug-visitor"
+    AZURE_AI_STUDENT_AGENT_ID                  = "mmaug-student"
+    AZURE_AI_TEACHER_AGENT_ID                  = "mmaug-teacher"
+    AZURE_AI_ADMIN_AGENT_ID                    = "mmaug-admin"
     KNOWLEDGE_BASE_STORAGE_URL                 = azurerm_storage_account.knowledge_base.primary_blob_endpoint
     KNOWLEDGE_BASE_CONTAINER                   = azurerm_storage_container.knowledge_base.name
     SCM_DO_BUILD_DURING_DEPLOYMENT             = "false"

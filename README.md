@@ -14,8 +14,8 @@ Educational development MVP for RFP `MMAUG-AIDB-RFP-002`.
 - Public React + TypeScript landing page with Microsoft and email/password account paths
 - FastAPI protected API with server-side role and account-status checks
 - PostgreSQL application profiles and append-only audit events
-- Microsoft Foundry `gpt-5.4-mini` assistant through managed identity, with reviewed
-  role-scoped knowledge, deterministic pre-model guardrails and a safe outage fallback
+- Microsoft Foundry Agent Service with `gpt-5.4-mini`, role-isolated File Search stores,
+  managed identity, deterministic guardrails and a safe outage fallback
 - Azure App Service Plan, private PostgreSQL, VNet/private DNS, Key Vault, Azure
   Communication Services, Application Insights, and one approved user-assigned identity
 - Terraform infrastructure and GitHub Actions deployment through OIDC
