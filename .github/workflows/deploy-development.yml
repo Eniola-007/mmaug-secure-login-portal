@@ -138,9 +138,16 @@ jobs:
           VITE_API_BASE_URL: ${{ env.API_APP_URL }}
           VITE_DEV_AUTH: "false"
         run: |
-          python -m pip install --requirement backend/requirements.txt --target backend/.python_packages/lib/site-packages
+          python -m pip install --no-compile --requirement backend/requirements.txt --target backend/.python_packages/lib/site-packages
           cp -R knowledge-base backend/knowledge-base
-          (cd backend && zip -r ../backend.zip app migrations alembic.ini requirements.txt .python_packages knowledge-base)
+          (cd backend && zip -qr ../backend.zip app migrations alembic.ini requirements.txt .python_packages knowledge-base \
+            -x '*/__pycache__/*' '*/__pycache__/' '*.pyc' '*.pyo')
+          echo "Backend package size: $(du -h backend.zip | cut -f1)"
+          echo "Backend package entries: $(unzip -Z1 backend.zip | wc -l)"
+          if unzip -Z1 backend.zip | grep -Eq '(^|/)__pycache__/|\.py[co]$'; then
+            echo "::error::Backend package contains generated Python bytecode."
+            exit 1
+          fi
           (cd frontend && npm ci && npm run build && cd dist && zip -r ../../frontend.zip .)
 
       - name: Deploy API
