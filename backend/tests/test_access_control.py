@@ -279,15 +279,20 @@ def test_agent_safe_fallback_is_role_specific(client: TestClient) -> None:
 def test_authenticated_agent_uses_foundry_with_database_role(
     client: TestClient, monkeypatch
 ) -> None:
-    foundry_calls: list[tuple[str, str]] = []
+    foundry_calls: list[tuple[str, str, str]] = []
 
-    def fake_ask_foundry(audience: str, prompt: str) -> str:
-        foundry_calls.append((audience, prompt))
+    def fake_ask_foundry(audience: str, agent_name: str, prompt: str) -> str:
+        foundry_calls.append((audience, agent_name, prompt))
         return "Foundry grounded answer."
 
     monkeypatch.setattr(
         "app.routers.agents.get_settings",
-        lambda: SimpleNamespace(azure_openai_endpoint="https://foundry.example"),
+        lambda: SimpleNamespace(
+            azure_ai_project_endpoint="https://foundry.example/project",
+            azure_ai_student_agent_id="mmaug-student",
+            azure_ai_teacher_agent_id="mmaug-teacher",
+            azure_ai_admin_agent_id="mmaug-admin",
+        ),
     )
     monkeypatch.setattr("app.routers.agents._ask_foundry", fake_ask_foundry)
 
@@ -302,10 +307,73 @@ def test_authenticated_agent_uses_foundry_with_database_role(
     assert response.json()["role"] == "student"
     assert response.json()["response"] == "Foundry grounded answer."
     assert len(foundry_calls) == 1
-    audience, prompt = foundry_calls[0]
+    audience, agent_name, prompt = foundry_calls[0]
     assert audience == "student"
+    assert agent_name == "mmaug-student"
     assert "Authenticated PostgreSQL portal role: student." in prompt
     assert "Where can I find approved study resources?" in prompt
+
+
+def test_foundry_request_targets_agent_and_deletes_one_turn_conversation(monkeypatch) -> None:
+    from types import SimpleNamespace
+
+    from pydantic import SecretStr
+
+    calls: dict[str, object] = {}
+
+    class FakeOpenAI:
+        class conversations:
+            @staticmethod
+            def create():
+                return SimpleNamespace(id="conversation-123")
+
+            @staticmethod
+            def delete(conversation_id: str) -> None:
+                calls["deleted_conversation"] = conversation_id
+
+        class responses:
+            @staticmethod
+            def create(**kwargs):
+                calls["response_request"] = kwargs
+                return SimpleNamespace(output_text="Grounded Foundry answer.")
+
+    class FakeProject:
+        def __init__(self, *, endpoint: str, credential) -> None:
+            calls["endpoint"] = endpoint
+            calls["credential"] = credential
+
+        @staticmethod
+        def get_openai_client():
+            return FakeOpenAI()
+
+    monkeypatch.setattr("azure.ai.projects.AIProjectClient", FakeProject)
+    monkeypatch.setattr(
+        "azure.identity.DefaultAzureCredential",
+        lambda **kwargs: SimpleNamespace(**kwargs),
+    )
+    monkeypatch.setattr(
+        "app.routers.agents.get_settings",
+        lambda: SimpleNamespace(
+            azure_ad_client_secret=SecretStr(""),
+            azure_client_id="managed-identity-client-id",
+            azure_ai_project_endpoint="https://foundry.example/project",
+        ),
+    )
+
+    from app.routers.agents import _ask_foundry
+
+    result = _ask_foundry("student", "mmaug-student", "Where are study resources?")
+
+    assert result == "Grounded Foundry answer."
+    assert calls["endpoint"] == "https://foundry.example/project"
+    assert calls["deleted_conversation"] == "conversation-123"
+    request = calls["response_request"]
+    assert request["conversation"] == "conversation-123"
+    assert request["input"] == "Where are study resources?"
+    assert request["extra_body"]["agent_reference"] == {
+        "name": "mmaug-student",
+        "type": "agent_reference",
+    }
 
 
 def test_public_agent_welcomes_visitors_without_authentication(client: TestClient) -> None:

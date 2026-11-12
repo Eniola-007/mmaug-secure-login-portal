@@ -20,6 +20,12 @@ variable "location" {
   default     = "northeurope"
 }
 
+variable "foundry_location" {
+  description = "Supported EU region for Foundry Agent Service and File Search; other app resources stay in location."
+  type        = string
+  default     = "swedencentral"
+}
+
 variable "environment" {
   description = "Deployment environment name."
   type        = string

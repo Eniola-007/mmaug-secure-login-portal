@@ -9,6 +9,7 @@ httpx>=0.28,<1
 email-validator>=2.2,<3
 argon2-cffi>=23.1,<26
 azure-identity>=1.19,<2
+azure-ai-projects>=2.10,<3
 openai>=3,<4
 azure-keyvault-secrets>=4.9,<5
 azure-communication-email>=1.0,<2

@@ -2,6 +2,12 @@ name: Deploy development
 
 on:
   workflow_dispatch:
+    inputs:
+      provision_foundry_agents:
+        description: "Provision role-scoped Foundry Agents after Foundry User access has been granted"
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -65,6 +71,9 @@ jobs:
           TF_VAR_azure_ad_tenant_id: ${{ secrets.AZURE_AD_TENANT_ID }}
         run: terraform apply -auto-approve
 
+      - name: Wait for App Service configuration restart
+        run: sleep 90
+
       - name: Publish approved knowledge base
         working-directory: infra
         shell: bash
@@ -84,15 +93,36 @@ jobs:
       - name: Capture deployment URLs
         working-directory: infra
         shell: bash
+        env:
+          AZURE_MANAGED_IDENTITY_CLIENT_ID: ${{ vars.AZURE_MANAGED_IDENTITY_CLIENT_ID }}
         run: |
+          runtime_client_id="$(terraform output -raw runtime_identity_client_id)"
+          if [[ "$runtime_client_id" != "$AZURE_MANAGED_IDENTITY_CLIENT_ID" ]]; then
+            echo "::error::GitHub deployment identity must match the API runtime managed identity."
+            exit 1
+          fi
           echo "API_APP_NAME=$(terraform output -raw api_app_name)" >> "$GITHUB_ENV"
           echo "FRONTEND_APP_NAME=$(terraform output -raw frontend_app_name)" >> "$GITHUB_ENV"
           echo "API_APP_URL=$(terraform output -raw api_url)" >> "$GITHUB_ENV"
           echo "FRONTEND_APP_URL=$(terraform output -raw frontend_url)" >> "$GITHUB_ENV"
+          echo "FOUNDRY_PROJECT_ENDPOINT=$(terraform output -raw foundry_project_endpoint)" >> "$GITHUB_ENV"
+          echo "FOUNDRY_MODEL_DEPLOYMENT_NAME=$(terraform output -raw foundry_model_deployment_name)" >> "$GITHUB_ENV"
+          echo "FOUNDRY_AGENT_ACCOUNT_NAME=$(terraform output -raw foundry_agent_account_name)" >> "$GITHUB_ENV"
+          echo "FOUNDRY_AGENT_PROJECT_NAME=$(terraform output -raw foundry_agent_project_name)" >> "$GITHUB_ENV"
+          echo "FOUNDRY_AGENT_PROJECT_RESOURCE_ID=$(terraform output -raw foundry_agent_project_resource_id)" >> "$GITHUB_ENV"
+          echo "RUNTIME_IDENTITY_PRINCIPAL_ID=$(terraform output -raw runtime_identity_principal_id)" >> "$GITHUB_ENV"
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Install Foundry provisioning SDK
+        run: python -m pip install "azure-ai-projects>=2.10,<3"
+      - name: Provision role-scoped Foundry Agents and File Search
+        if: inputs.provision_foundry_agents
+        env:
+          FOUNDRY_PROJECT_ENDPOINT: ${{ env.FOUNDRY_PROJECT_ENDPOINT }}
+          FOUNDRY_MODEL_DEPLOYMENT_NAME: ${{ env.FOUNDRY_MODEL_DEPLOYMENT_NAME }}
+        run: python scripts/provision-foundry-agents.py
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -129,12 +159,27 @@ jobs:
           app-name: ${{ env.FRONTEND_APP_NAME }}
           package: frontend.zip
       - name: Verify health
+        env:
+          PROVISION_FOUNDRY_AGENTS: ${{ inputs.provision_foundry_agents }}
         run: |
           curl --fail --retry 60 --retry-delay 10 --retry-all-errors --max-time 20 "$API_APP_URL/health/ready"
           curl --fail --retry 30 --retry-delay 10 --retry-all-errors --max-time 20 "$FRONTEND_APP_URL/"
+          if [[ "$PROVISION_FOUNDRY_AGENTS" == "true" ]]; then
+            response="$(curl --fail --max-time 60 \
+              -H 'Content-Type: application/json' \
+              -d '{"message":"Who can use the portal?"}' \
+              "$API_APP_URL/api/agent/public")"
+            echo "$response" | jq .
+            echo "$response" | jq -e '.mode == "foundry"' >/dev/null
+          fi
           {
             echo "### Development deployment"
             echo "- Frontend URL: $FRONTEND_APP_URL"
             echo "- API URL: $API_APP_URL"
+            echo "- Foundry Agent provisioning requested: $PROVISION_FOUNDRY_AGENTS"
+            echo "- Foundry account: $FOUNDRY_AGENT_ACCOUNT_NAME"
+            echo "- Foundry project: $FOUNDRY_AGENT_PROJECT_NAME"
+            echo "- Foundry project resource ID: $FOUNDRY_AGENT_PROJECT_RESOURCE_ID"
+            echo "- Runtime identity principal ID: $RUNTIME_IDENTITY_PRINCIPAL_ID"
             echo "- MSAL status: pending administrator app registrations"
           } >> "$GITHUB_STEP_SUMMARY"
