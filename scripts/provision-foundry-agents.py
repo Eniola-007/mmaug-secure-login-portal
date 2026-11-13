@@ -2,6 +2,7 @@ import hashlib
 import os
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 from azure.ai.projects import AIProjectClient
@@ -145,25 +146,29 @@ def _remove_stale_resources(project, openai, digests: dict[str, str]) -> None:
             openai.vector_stores.delete(store.id)
 
 
-def _smoke_test_agent(openai, audience: str, agent_name: str) -> None:
-    conversation = openai.conversations.create(timeout=20.0)
-    try:
-        response = openai.responses.create(
-            conversation=conversation.id,
-            input=SMOKE_QUESTIONS[audience],
-            extra_body={
-                "agent_reference": {
-                    "name": agent_name,
-                    "type": "agent_reference",
-                }
-            },
-            timeout=120.0,
-        )
-        if not response.output_text or not response.output_text.strip():
-            raise RuntimeError(f"Foundry {audience} agent returned an empty smoke response")
-        print(f"Verified {audience} agent response through Foundry")
-    finally:
-        openai.conversations.delete(conversation.id, timeout=20.0)
+def _smoke_test_agent(project, audience: str, agent_name: str) -> None:
+    agent_openai = project.get_openai_client(agent_name=agent_name, max_retries=0)
+    for attempt in range(1, 4):
+        conversation = agent_openai.conversations.create(timeout=20.0)
+        try:
+            response = agent_openai.responses.create(
+                conversation=conversation.id,
+                input=SMOKE_QUESTIONS[audience],
+                max_output_tokens=512,
+                timeout=120.0,
+            )
+            if not response.output_text or not response.output_text.strip():
+                raise RuntimeError(f"Foundry {audience} agent returned an empty response")
+            print(f"Verified {audience} agent response through Foundry")
+            return
+        except Exception as error:
+            if getattr(error, "status_code", None) != 429 or attempt == 3:
+                raise
+            delay = 20 * attempt
+            print(f"Foundry throttled {audience} smoke test; retrying in {delay}s")
+            time.sleep(delay)
+        finally:
+            agent_openai.conversations.delete(conversation.id, timeout=20.0)
 
 
 def main() -> None:
@@ -183,7 +188,7 @@ def main() -> None:
         print(f"Provisioned {audience} agent {agent.name} version {agent.version}")
 
     for audience, agent_name in AGENT_NAMES.items():
-        _smoke_test_agent(openai, audience, agent_name)
+        _smoke_test_agent(project, audience, agent_name)
 
     _remove_stale_resources(project, openai, digests)
 

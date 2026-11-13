@@ -50,13 +50,13 @@ def _ask_foundry(audience: str, agent_name: str, prompt: str) -> str:
         endpoint=settings.azure_ai_project_endpoint,
         credential=credential,
     )
-    openai = project.get_openai_client()
+    openai = project.get_openai_client(agent_name=agent_name, max_retries=0)
     conversation = openai.conversations.create(timeout=15.0)
     try:
         response = openai.responses.create(
             conversation=conversation.id,
             input=prompt,
-            extra_body={"agent_reference": {"name": agent_name, "type": "agent_reference"}},
+            max_output_tokens=512,
             timeout=45.0,
         )
         content = response.output_text

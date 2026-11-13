@@ -345,7 +345,8 @@ def test_foundry_request_targets_agent_and_deletes_one_turn_conversation(monkeyp
             calls["credential"] = credential
 
         @staticmethod
-        def get_openai_client():
+        def get_openai_client(**kwargs):
+            calls["openai_client"] = kwargs
             return FakeOpenAI()
 
     monkeypatch.setattr("azure.ai.projects.AIProjectClient", FakeProject)
@@ -368,17 +369,18 @@ def test_foundry_request_targets_agent_and_deletes_one_turn_conversation(monkeyp
 
     assert result == "Grounded Foundry answer."
     assert calls["endpoint"] == "https://foundry.example/project"
+    assert calls["openai_client"] == {
+        "agent_name": "mmaug-student",
+        "max_retries": 0,
+    }
     assert calls["deleted_conversation"] == "conversation-123"
     assert calls["conversation_create"] == {"timeout": 15.0}
     assert calls["conversation_delete"] == {"timeout": 10.0}
     request = calls["response_request"]
     assert request["conversation"] == "conversation-123"
     assert request["input"] == "Where are study resources?"
+    assert request["max_output_tokens"] == 512
     assert request["timeout"] == 45.0
-    assert request["extra_body"]["agent_reference"] == {
-        "name": "mmaug-student",
-        "type": "agent_reference",
-    }
 
 
 def test_public_agent_welcomes_visitors_without_authentication(client: TestClient) -> None:

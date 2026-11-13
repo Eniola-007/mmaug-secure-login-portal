@@ -46,7 +46,7 @@ resource "azurerm_cognitive_deployment" "gpt_5_4_mini_agents" {
 
   sku {
     name     = "DataZoneStandard"
-    capacity = 1
+    capacity = 10
   }
 }
 
