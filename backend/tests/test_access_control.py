@@ -324,12 +324,14 @@ def test_foundry_request_targets_agent_and_deletes_one_turn_conversation(monkeyp
     class FakeOpenAI:
         class conversations:
             @staticmethod
-            def create():
+            def create(**kwargs):
+                calls["conversation_create"] = kwargs
                 return SimpleNamespace(id="conversation-123")
 
             @staticmethod
-            def delete(conversation_id: str) -> None:
+            def delete(conversation_id: str, **kwargs) -> None:
                 calls["deleted_conversation"] = conversation_id
+                calls["conversation_delete"] = kwargs
 
         class responses:
             @staticmethod
@@ -367,9 +369,12 @@ def test_foundry_request_targets_agent_and_deletes_one_turn_conversation(monkeyp
     assert result == "Grounded Foundry answer."
     assert calls["endpoint"] == "https://foundry.example/project"
     assert calls["deleted_conversation"] == "conversation-123"
+    assert calls["conversation_create"] == {"timeout": 15.0}
+    assert calls["conversation_delete"] == {"timeout": 10.0}
     request = calls["response_request"]
     assert request["conversation"] == "conversation-123"
     assert request["input"] == "Where are study resources?"
+    assert request["timeout"] == 45.0
     assert request["extra_body"]["agent_reference"] == {
         "name": "mmaug-student",
         "type": "agent_reference",

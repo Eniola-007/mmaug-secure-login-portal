@@ -32,6 +32,13 @@ INSTRUCTIONS = {
     ),
 }
 
+SMOKE_QUESTIONS = {
+    "visitor": "Who can use the portal?",
+    "student": "What approved help does the student dashboard provide?",
+    "teacher": "What approved help does the teacher dashboard provide?",
+    "admin": "What approved help does the administrator dashboard provide?",
+}
+
 
 def _knowledge_digest(audience: str) -> str:
     digest = hashlib.sha256()
@@ -138,6 +145,27 @@ def _remove_stale_resources(project, openai, digests: dict[str, str]) -> None:
             openai.vector_stores.delete(store.id)
 
 
+def _smoke_test_agent(openai, audience: str, agent_name: str) -> None:
+    conversation = openai.conversations.create(timeout=20.0)
+    try:
+        response = openai.responses.create(
+            conversation=conversation.id,
+            input=SMOKE_QUESTIONS[audience],
+            extra_body={
+                "agent_reference": {
+                    "name": agent_name,
+                    "type": "agent_reference",
+                }
+            },
+            timeout=120.0,
+        )
+        if not response.output_text or not response.output_text.strip():
+            raise RuntimeError(f"Foundry {audience} agent returned an empty smoke response")
+        print(f"Verified {audience} agent response through Foundry")
+    finally:
+        openai.conversations.delete(conversation.id, timeout=20.0)
+
+
 def main() -> None:
     endpoint = os.environ["FOUNDRY_PROJECT_ENDPOINT"]
     deployment = os.environ["FOUNDRY_MODEL_DEPLOYMENT_NAME"]
@@ -153,6 +181,9 @@ def main() -> None:
         agent = _create_agent_version(project, audience, deployment, store.id, digest)
         digests[audience] = digest
         print(f"Provisioned {audience} agent {agent.name} version {agent.version}")
+
+    for audience, agent_name in AGENT_NAMES.items():
+        _smoke_test_agent(openai, audience, agent_name)
 
     _remove_stale_resources(project, openai, digests)
 

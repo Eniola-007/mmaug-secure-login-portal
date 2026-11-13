@@ -51,12 +51,13 @@ def _ask_foundry(audience: str, agent_name: str, prompt: str) -> str:
         credential=credential,
     )
     openai = project.get_openai_client()
-    conversation = openai.conversations.create()
+    conversation = openai.conversations.create(timeout=15.0)
     try:
         response = openai.responses.create(
             conversation=conversation.id,
             input=prompt,
             extra_body={"agent_reference": {"name": agent_name, "type": "agent_reference"}},
+            timeout=45.0,
         )
         content = response.output_text
         if not content or not content.strip():
@@ -65,7 +66,15 @@ def _ask_foundry(audience: str, agent_name: str, prompt: str) -> str:
             )
         return content.strip()
     finally:
-        openai.conversations.delete(conversation.id)
+        try:
+            openai.conversations.delete(conversation.id, timeout=10.0)
+        except Exception:
+            logger.warning(
+                "Could not delete Foundry conversation %s after %s request",
+                conversation.id,
+                audience,
+                exc_info=True,
+            )
 
 
 @router.post("/public", response_model=PublicAgentResponse)

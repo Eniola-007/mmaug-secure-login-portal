@@ -172,7 +172,7 @@ jobs:
           curl --fail --retry 60 --retry-delay 10 --retry-all-errors --max-time 20 "$API_APP_URL/health/ready"
           curl --fail --retry 30 --retry-delay 10 --retry-all-errors --max-time 20 "$FRONTEND_APP_URL/"
           if [[ "$PROVISION_FOUNDRY_AGENTS" == "true" ]]; then
-            response="$(curl --fail --max-time 60 \
+            response="$(curl --fail --max-time 90 \
               -H 'Content-Type: application/json' \
               -d '{"message":"Who can use the portal?"}' \
               "$API_APP_URL/api/agent/public")"
