@@ -76,6 +76,10 @@ _PRIVILEGED_ACTION_MARKERS = (
 _SECRET_MARKERS = (
     "show password",
     "reveal password",
+    "another user's password",
+    "another user password",
+    "someone else's password",
+    "their password",
     "access token",
     "client secret",
     "api key",

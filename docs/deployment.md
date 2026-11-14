@@ -1,9 +1,10 @@
 # Deployment runbook
 
 Current development state: the frontend and API App Services, private PostgreSQL, email,
-monitoring, knowledge storage, and legacy North Europe Foundry resources are deployed.
-The Sweden Central Foundry Agent project is a pending branch change and is not live.
-Microsoft client IDs and Foundry RBAC remain completion gates.
+monitoring and knowledge storage are deployed in North Europe. The active Microsoft
+Foundry account/project, model, four agents and File Search stores are deployed in Sweden
+Central. Foundry User is effective and the live website-to-agent route is verified.
+Microsoft SPA/API client IDs remain the tenant-administrator completion gate.
 
 ## 1. Approved deployment identity
 
@@ -11,13 +12,15 @@ Microsoft client IDs and Foundry RBAC remain completion gates.
 - Subscription: `9a2ab22e-5269-4da3-a16a-eeed2b0c09aa`
 - Resource group: `rg_mmaug_high_school`
 - Region: `northeurope`
+- Foundry region: `swedencentral`
 - UAMI: `id-mmaug-secure-login-portal`
 - UAMI client ID: `9724b573-ba41-4fc3-86ee-db1f6a892d69`
 - UAMI principal ID: `6d15404b-a6d8-4019-b638-609f1c75723d`
 - OIDC subject: `repo:Eniola-007@78024150/mmaug-secure-login-portal@1450348387:environment:development`
 
-The identity has Contributor at resource-group scope. It deploys Azure infrastructure and
-application packages. It has no Microsoft Graph directory role and does not create app
+The identity has Contributor at resource-group scope and Foundry User on the active
+Foundry scope. It deploys Azure infrastructure/agents and is attached to the API for
+runtime Foundry access. It has no Microsoft Graph directory role and does not create app
 registrations or tenant-wide consent. The workflow verifies that its OIDC client ID matches
 the API's user-assigned managed identity client ID.
 
@@ -97,34 +100,28 @@ role there; a user cannot approve or promote their own registration.
 
 ## 5. Foundry knowledge and role agents
 
+Terraform creates the active Sweden Central account
+`aifoundry-mmaug-development-agents-gkt6d`, project
+`mmaug-school-portal-agents` and `gpt-5.4-mini` DataZoneStandard deployment with capacity
+10. The old North Europe Foundry project has been deleted and is not recreated.
+
 The workflow uploads reviewed Markdown to the private `knowledge-base` Blob container and
-masks the storage key immediately. This copy is for deployment/storage; it does not itself
-populate Foundry File Search.
+masks the temporary storage key. Blob is the approved source copy; it does not itself
+refresh Foundry File Search. Enable **Provision role-scoped Foundry Agents and File
+Search** to run `scripts/provision-foundry-agents.py`. The script creates/updates four
+persistent agents, replaces each audience-specific vector store's files and directly
+smoke-tests every agent before application deployment.
 
-The branch Terraform creates a separate Sweden Central Foundry account/project and
-`gpt-5.4-mini` deployment while preserving the existing North Europe resources. The first
-workflow run must leave **Provision role-scoped Foundry Agents and File Search** unchecked.
-After Terraform succeeds, the workflow summary reports the project name and resource ID
-and the API managed-identity principal ID.
-
-An authorized Azure administrator must grant **Foundry User** on the new project to
-`id-mmaug-secure-login-portal` (principal ID shown in the workflow summary). Open the
-project's **Access control (IAM)**, select **Add role assignment**, choose **Foundry User**,
-select **Managed identity → User-assigned managed identity**, then choose that identity
-from `rg_mmaug_high_school` and confirm the principal ID before assigning. Assign at the
-project scope, not the subscription or whole resource group. This role allows the runtime
-API to invoke agents and allows the protected GitHub workflow to create and update them.
-The workflow fails early unless its OIDC client ID matches the runtime identity.
-
-Role assignment requires **Owner**, **User Access Administrator**, or an equivalent role
-assignment permission; Resource Group Contributor alone cannot grant RBAC. Wait for role
-propagation, then rerun the workflow with agent provisioning checked. It creates four
-agents (visitor, student, teacher, administrator), each with an isolated File Search
-store. The deployment smoke test fails unless the public assistant returns
-`mode: "foundry"`.
+The UAMI already has effective **Foundry User** and the live public App Service route has
+returned `mode: "foundry"`. If this role must be recreated, an Owner, User Access
+Administrator or equivalent role-assignment administrator must assign it to principal
+`6d15404b-a6d8-4019-b638-609f1c75723d` at the narrowest current Foundry scope. Contributor
+alone cannot grant RBAC.
 
 Do not put a Foundry API key or application password in the repository. Microsoft Entra
-managed identity is the runtime and deployment authentication mechanism.
+managed identity is the normal runtime and deployment authentication mechanism. The
+workflow now uses bounded retry for the first live post-deployment request because an App
+Service cold start and initial token acquisition can make that request slower.
 
 ## 6. Local-account email and recovery
 

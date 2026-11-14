@@ -24,14 +24,14 @@
 - The API rejects prompt overrides, secret requests, cross-user records, and privileged
   action requests before calling Foundry.
 - Foundry Agent Service is deployed in Sweden Central while the app and PostgreSQL stay in
-  North Europe. The App Service managed identity must have **Foundry User** on the Foundry
-  project. Each audience has a separate File Search store and agent; the API selects the
+  North Europe. The App Service managed identity has effective **Foundry User** on the active
+  Foundry scope. Each audience has a separate File Search store and agent; the API selects the
   agent from the server-validated role. The model receives no credentials, raw database
   access or state-changing tools; requests fail safely into a constrained fallback during
   outages.
-- When the administrator-approved Foundry service principal is enabled, its client secret
-  is a write-only Terraform input stored in Key Vault; the Web App setting is a Key Vault
-  reference and the GitHub workflow continues to deploy through managed-identity OIDC.
+- The normal Foundry path uses the user-assigned managed identity. Optional service-principal
+  variables remain only as a compatibility fallback and should be removed after the managed-
+  identity-only path is adopted permanently.
 
 ## Managed identities
 
@@ -41,7 +41,9 @@ It deploys infrastructure and code and is attached to the API.
 It has no Microsoft Graph directory permission. The Entra administrator separately owns
 app registrations, API scopes, consent, and redirect URIs. Because deployment and runtime
 duties share one identity, protect the GitHub environment with branch restrictions and
-required reviewers.
+required reviewers. Before production, split deployment and runtime identities, reduce
+runtime Key Vault permissions to secret `Get`, and replace storage shared-key operations
+with the narrowest Blob data-plane role.
 
 ## Threats and controls
 

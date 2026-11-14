@@ -1,118 +1,164 @@
-# Solution architecture
+# Current architecture and decisions
 
-> **Educational-use caveat:** The MMAUG Secure Login Portal was built for the Malta
-> Microsoft AI User Group (MMUAG) AI & DevOps Fundamentals Bootcamp 2026. It is a
-> demo/educational solution and must not be adopted as a production-ready system.
+**As of:** 14 November 2026<br>
+**Scope:** development demonstration using synthetic data only
 
-## Current deployed architecture
+![Current Microsoft-style Azure architecture](architecture-current.svg)
 
-![Microsoft-style current working Azure architecture](architecture-current.svg)
+## 1. Current deployment
 
-The development environment is deployed in North Europe in
-`rg_mmaug_high_school`. The public entry point currently used by visitors is the direct
-frontend App Service URL:
+The portal uses two Azure regions:
 
-`https://app-mmaug-development-web-gkt6d.azurewebsites.net`
+- **North Europe** hosts the React and FastAPI App Services, shared Linux B1 App
+  Service Plan, user-assigned managed identity, private PostgreSQL, Key Vault,
+  networking, email, storage and monitoring.
+- **Sweden Central** hosts the active Microsoft Foundry account, project,
+  `gpt-5.4-mini` DataZoneStandard deployment, four prompt agents and audience-isolated
+  File Search vector stores.
 
-The deployed components are:
+The resource group is `rg_mmaug_high_school`. The active Foundry account is
+`aifoundry-mmaug-development-agents-gkt6d`; the project is
+`mmaug-school-portal-agents`. The deleted North Europe Foundry project is not part of
+the current architecture.
 
-- one Linux B1 App Service Plan with separate React frontend and FastAPI API Web Apps;
-- one approved user-assigned identity, `id-mmaug-secure-login-portal`, used by GitHub
-  OIDC for deployment and attached to the API for approved runtime access;
-- PostgreSQL Flexible Server 16, B1ms, in the delegated `snet-postgresql` subnet with
-  public access disabled and private DNS linked to the VNet;
-- API App Service VNet integration through `snet-appservice`;
-- Key Vault references for the database URL and local-token signing value;
-- Azure Communication Services Email for invitations, verification, recovery and
-  administrator alerts;
-- workspace-based Application Insights and Log Analytics;
-- a private knowledge-base Storage account and container; and
-- the legacy North Europe Microsoft Foundry project and model deployment, currently
-  outside the active runtime path.
+Direct Azure App Service HTTPS is the current ingress. Application Gateway, WAF and
+custom DNS are not deployed. They are therefore excluded from the current-state
+diagram and from claimed controls.
 
-The current public ingress is the HTTPS endpoint supplied by Azure App Service. The
-current-state diagram contains only components and paths that are working now.
+## 2. Trust boundaries
 
-## Request and authorization path
+### Browser boundary
 
-1. Visitors load the public React application over the frontend App Service HTTPS URL.
-2. The browser calls the FastAPI App Service for registration, sign-in, dashboards,
-   account administration and assistant messages.
-3. FastAPI authenticates the request, then reads `is_active` and `role` from PostgreSQL.
-4. PostgreSQL—not the browser, token or assistant—selects Student, Teacher or
-   Administrator authorization.
-5. Administrative changes, user deletion, invitations and significant authentication
-   events are recorded in the audit table.
-6. The API uses VNet integration and private DNS to reach PostgreSQL; the database has no
-   public endpoint.
+The frontend renders the user experience but does not decide authorization. It sends
+tokens and requested operations to FastAPI. It cannot activate accounts, select a
+database role or select a Foundry agent.
 
-Authorized operators can inspect the database read-only through the API App Service SSH
-console, which is already on the private network. Direct public database access is not
-enabled for administration.
+### API boundary
 
-## Authentication state
+FastAPI is the security and orchestration boundary. For protected requests it:
 
-Local email/password authentication is live for synthetic demonstration accounts:
+1. validates the token and account/token-version state;
+2. reads the active Student, Teacher or Administrator role from PostgreSQL;
+3. enforces route authorization and rate limits;
+4. applies deterministic assistant guardrails;
+5. selects a fixed agent name from the validated audience;
+6. records an audit event.
 
-- passwords are hashed with Argon2id;
-- registrations start inactive and cannot choose a role;
-- email verification is required before local activation or role change;
-- one-time verification, invitation and recovery values are stored only as digests;
-- password reset revokes previous local sessions; and
-- public authentication endpoints use PostgreSQL-backed rate limits.
+### Data boundary
 
-Microsoft authentication is implemented in code but not active in the deployed build.
-The API client ID is still the zero UUID. A tenant administrator must create the SPA/API
-registrations, delegated `access_as_user` scope, consent and redirect URI, then provide
-the two non-secret client IDs as GitHub environment variables. No SPA or API client
-secret is required.
+PostgreSQL is reachable only through the VNet's private route and private DNS. It
+stores application profiles, password hashes for local accounts, immutable Entra
+identity keys, role assignments, invitation/verification state, audit events and
+rate-limit records. Role changes go through authorized application operations so
+verification checks and audit events cannot be bypassed.
 
-After activation, FastAPI validates signature, issuer, audience, lifetime, tenant ID,
-object ID and delegated scope before PostgreSQL resolves the immutable
-`(entra_tenant_id, entra_object_id)` mapping.
+### AI boundary
 
-## Email path
+The API invokes Foundry with `id-mmaug-secure-login-portal`. Each role has a separate
+agent and File Search vector store. Agents have no state-changing school tool. The
+model receives neither credentials nor unrestricted database access. If the Foundry
+call fails, the API returns a constrained role-specific fallback.
 
-The API authenticates to Azure Communication Services with the user-assigned managed
-identity; no connection string is stored in GitHub or exposed to the browser. The API
-waits for the final ACS operation result before reporting an invitation as sent.
+## 3. Role and agent mapping
 
-The Azure-managed sender is appropriate only for this demonstration. Delivery, junk
-classification and suppression behavior must be validated before any broader use, and a
-verified school-owned domain should be considered for a future operational service.
+| Validated audience | API route | Foundry agent | Knowledge |
+|---|---|---|---|
+| Public visitor | `/api/agent/public` | `mmaug-visitor` | Service overview + guardrails |
+| Student | `/api/agent/message` | `mmaug-student` | Overview + student + guardrails |
+| Teacher | `/api/agent/message` | `mmaug-teacher` | Overview + teacher + guardrails |
+| Administrator | `/api/agent/message` | `mmaug-admin` | Overview + administrator + guardrails |
 
-## Assistant and knowledge boundary
+The PostgreSQL role is authoritative. Neither a token claim supplied by a local
+client nor the question text can move a user to a different agent.
 
-The public site and each role dashboard have an assistant experience. FastAPI always
-selects the signed-in assistant from the PostgreSQL role. Deterministic pre-model
-guardrails refuse prompt override, credential, cross-user-data and privileged-action
-requests. Agents receive no state-changing tools.
+## 4. Service communication
 
-The live API has not yet been verified against a Foundry Agent; ordinary questions still
-return the safe demo/fallback. A pending branch change adds a separate Sweden Central
-Foundry Agent Service project with four agents and isolated File Search stores while
-keeping the web app and PostgreSQL in North Europe. The migration requires a successful
-deployment, **Foundry User** on the new project for the API's user-assigned identity, and
-grounding/isolation tests before the website can be described as agent-backed.
+| From | To | Protocol/trust | Purpose |
+|---|---|---|---|
+| Browser | Frontend App Service | HTTPS | Load landing page and dashboards |
+| Frontend | API App Service | HTTPS/JSON + token | Authentication and application operations |
+| API | PostgreSQL | TLS 5432 through VNet/private DNS | Users, roles, audit and rate-limit state |
+| API App Service | Key Vault | App Service reference + UAMI | Resolve DB URL and JWT value |
+| API | ACS Email | Azure SDK + Azure identity | Verification, invitations, recovery and alerts |
+| API | Foundry project | Entra token + Responses API | Invoke one server-selected role agent |
+| Foundry agent | File Search | Agent tool binding | Search only its audience vector store |
+| Foundry agent | `gpt-5.4-mini` | Foundry internal model invocation | Generate grounded answer |
+| App Services | Application Insights | Connection string/agent | Request and failure telemetry |
+| GitHub Actions | Azure Resource Manager | OIDC + Contributor | Terraform and application deployment |
+| GitHub Actions | Foundry project | OIDC + Foundry User | Agent/vector-store provisioning and tests |
+| GitHub Actions | Blob Storage | Current masked account-key operation | Publish reviewed knowledge source copy |
 
-## Deployment and identity boundary
+## 5. Managed identity and permissions
 
-GitHub Actions uses environment-bound workload identity federation to obtain an Azure
-token for `id-mmaug-secure-login-portal`. Terraform and the zip-deployment steps use that
-token; no Azure client secret or App Service publish profile is committed.
+The single approved identity is:
 
-The managed identity has no Microsoft Graph directory permission. Creating Entra app
-registrations, granting consent and assigning Azure roles remain administrator actions.
-The repository workflow cannot grant itself additional RBAC.
+- name: `id-mmaug-secure-login-portal`
+- client ID: `9724b573-ba41-4fc3-86ee-db1f6a892d69`
+- principal ID: `6d15404b-a6d8-4019-b638-609f1c75723d`
 
-## Completion gates outside the working diagram
+It currently has Contributor on `rg_mmaug_high_school`, Foundry User on the active
+Foundry scope and a Key Vault access policy used by both deployment and runtime. The
+API App Service has the UAMI attached and `AZURE_CLIENT_ID` selects it explicitly.
 
-These items are documented here rather than shown as active architecture components:
+Contributor does not grant Entra application-registration permissions, Microsoft
+Graph directory permissions or the right to assign Azure roles. The tenant
+administrator remains responsible for SPA/API registrations, consent and redirects.
 
-1. Create and configure the Microsoft Entra SPA/API registrations and redeploy with their
-   client IDs.
-2. Merge and deploy the Sweden Central agent branch, grant the API managed identity
-   **Foundry User** on the new Foundry project, allow propagation, provision agents, and
-   complete grounding/isolation tests.
-3. Complete privacy, retention, backup/restore, penetration, accessibility, incident
-   response and operational-ownership reviews before considering real student data.
+For production, split deployment and runtime identities, reduce the runtime Key Vault
+permission to secret `Get`, and replace storage account-key use with the minimum Blob
+data-plane role.
+
+## 6. Authentication modes
+
+### Current local account flow
+
+Users can create a local account, verify email, reset a password and wait for an
+administrator to approve/activate a database role. Passwords are stored as Argon2id
+hashes. Sign-up does not accept an elevated role.
+
+### Pending Microsoft flow
+
+The tenant administrator must provide one SPA and one API registration. The API will
+expose `access_as_user`; the SPA will request that delegated scope and use
+`common` authority so supported work, school, guest or personal Microsoft accounts
+can authenticate. Portal access still requires an approved PostgreSQL record.
+
+## 7. Deployment architecture
+
+GitHub Actions uses an environment-bound federated credential and Azure OIDC. The
+workflow applies Terraform, publishes reviewed knowledge, provisions and directly
+tests all four agents, deploys API/frontend packages and performs live health and
+agent tests. No Azure deployment client secret is required.
+
+Remote Terraform state is kept in a dedicated private Blob container. Database and
+JWT values are generated/stored in Key Vault and referenced by App Service rather
+than copied into GitHub or browser configuration.
+
+## 8. Verified state and remaining work
+
+Verified on 14 November 2026:
+
+- four persistent role agents are Running;
+- each role agent passed a direct Foundry smoke test;
+- the UAMI can invoke the Sweden Central project with Foundry User;
+- the live App Service public endpoint returned `mode: foundry`;
+- input guardrails and safe fallback remain in place;
+- PostgreSQL is private and the application health endpoint is ready.
+
+Remaining tenant-admin integration is Microsoft SPA/API registration and consent.
+Before production, complete identity separation, storage-key removal, Foundry trace
+connection, alerting, data-protection assessment, penetration testing and real-data
+governance.
+
+## 9. Key design decisions
+
+1. **Database-owned roles:** authentication proves identity; PostgreSQL controls
+   school authorization.
+2. **Four isolated agents:** role separation exists in both server routing and
+   knowledge retrieval, not only in prompt text.
+3. **Managed identity first:** runtime and workflow avoid Foundry API keys.
+4. **Private database:** the VNet remains because App Service Plan alone does not make
+   PostgreSQL private.
+5. **No unbuilt WAF claim:** current diagrams show direct App Service HTTPS only.
+6. **Read-only assistant:** human-approved portal workflows make changes; the model
+   only explains approved guidance.

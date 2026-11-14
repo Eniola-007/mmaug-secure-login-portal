@@ -1,8 +1,8 @@
 # MMAUG Secure Login Portal — Technical Proposal and Deployment Record
 
-**Response:** MMAUG-AIDB-RFP-002  
-**Version:** 5.1 — Current working implementation  
-**Date:** 11 November 2026
+**Response:** MMAUG-AIDB-RFP-002<br>
+**Version:** 5.2 — Current working implementation<br>
+**Date:** 14 November 2026
 
 > **Educational-use caveat:** The MMAUG Secure Login Portal is a solution built as part
 > of the Malta Microsoft AI User Group (MMUAG) AI & DevOps Fundamentals Bootcamp 2026.
@@ -32,7 +32,7 @@ secret or App Service publishing credential is stored in GitHub.
 
 | Area | Deployed state |
 |---|---|
-| Azure scope | Tenant `71beefd7-29f4-4b9e-9cb2-e78b5dc851ad`, North Europe, `rg_mmaug_high_school` |
+| Azure scope | Tenant `71beefd7-29f4-4b9e-9cb2-e78b5dc851ad`, `rg_mmaug_high_school`; app/data in North Europe and Foundry in Sweden Central |
 | Public URL | Direct frontend App Service HTTPS URL |
 | Hosting | Linux B1 App Service Plan; separate React and FastAPI Web Apps |
 | Deployment identity | `id-mmaug-secure-login-portal`; GitHub environment OIDC; Contributor at resource-group scope |
@@ -41,9 +41,9 @@ secret or App Service publishing credential is stored in GitHub.
 | Local identity | Argon2id password hashes, verified email, short-lived versioned JWTs |
 | Email | Azure Communication Services using managed identity and Azure-managed sender |
 | Monitoring | Workspace-based Application Insights and Log Analytics |
-| AI platform | Foundry project and `gpt-5.4-mini` deployment provisioned |
-| AI knowledge | Reviewed Markdown published to private Blob storage by the workflow |
-| Current AI behavior | Deterministic guardrails plus constrained safe fallback until runtime Foundry RBAC is effective |
+| AI platform | Sweden Central Foundry project, `gpt-5.4-mini` DataZoneStandard capacity 10 and four running prompt agents |
+| AI knowledge | Reviewed Markdown in private Blob storage and four audience-isolated Foundry File Search stores |
+| Current AI behavior | Live visitor/student/teacher/admin agents, server-selected role, deterministic guardrails and constrained outage fallback |
 
 ## Identity, enrollment and roles
 
@@ -87,10 +87,10 @@ reject prompt injection, secrets, cross-user data and role-changing actions. Ass
 have no database connection or state-changing tools, and question text is not written to
 audit details.
 
-The Foundry project and model deployment are provisioned. Current role-assignment evidence
-does not show **Foundry User** for the API managed identity, so runtime calls safely fall
-back to constrained local guidance. Completion requires the tenant's Owner or User Access
-Administrator to grant that role and a subsequent grounded-answer and role-isolation test.
+The active Foundry account/project is in Sweden Central. The approved API identity has
+effective **Foundry User**; all four agents passed direct smoke tests and the deployed
+public API returned `mode: "foundry"`. Each agent uses a separate File Search vector
+store. The fallback remains as an availability control, not as the normal execution path.
 
 ## Delivery model and separation of duties
 
@@ -143,14 +143,14 @@ architecture and acceptance record describe that deployed path only.
 6. PostgreSQL is private and the API uses VNet integration.
 7. ACS accepts managed-identity email operations; the application now tracks their final
    operation result.
-8. Foundry project and `gpt-5.4-mini` model deployment are provisioned.
-9. Deployment run `43043200125` completed successfully for commit `1a2d442`.
+8. Sweden Central Foundry project, `gpt-5.4-mini` model and four role agents are provisioned.
+9. The four direct Foundry smoke tests passed with isolated File Search knowledge.
+10. The live App Service public assistant returned `mode: "foundry"` on 14 November 2026.
 
 ### Remaining gates
 
 1. Tenant administrator completes the SPA/API registrations and supplies both client IDs.
-2. An Owner or User Access Administrator grants effective **Foundry User** to the runtime
-   managed identity and grounded agents pass role-isolation testing.
+2. Connect Foundry tracing to Application Insights and complete alert/cost thresholds.
 3. Load, accessibility, backup/restore, privacy, retention, penetration, Conditional
    Access, incident-response and operational-ownership reviews are completed.
 

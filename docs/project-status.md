@@ -1,48 +1,57 @@
-# Project status — 12 November 2026
+# Project status — 14 November 2026
 
 ## Live and verified
 
-- Development frontend: `https://app-mmaug-development-web-gkt6d.azurewebsites.net`.
-- Development API: `https://app-mmaug-development-api-gkt6d.azurewebsites.net`.
-- GitHub OIDC deployment uses only `id-mmaug-secure-login-portal`; deployment run
-  `43043200125` succeeded for commit `1a2d442`.
-- React landing page, local sign-up/sign-in, email verification, password recovery and
-  role dashboards are deployed.
-- Administrators can invite, re-invite, approve, activate, deactivate, assign database
-  roles and delete another user from **People & access**.
-- Students and teachers have a private **My activity** view; administrators retain the
-  complete audit view.
-- PostgreSQL Flexible Server 16 B1ms is private, VNet injected and ready; the API readiness
-  check includes a live database query.
-- Azure Communication Services Email is configured through managed identity; recent send
-  requests were accepted and final operation status is now checked by the application.
-- Key Vault, Application Insights, Log Analytics, private knowledge storage and the legacy
-  North Europe Foundry account/project are provisioned.
-- The frontend and README display the required MMUAG Bootcamp educational-use caveat.
-- CI passes 34 backend tests, backend lint, frontend lint and production build for the
-  current account-lifecycle feature set.
+- Frontend: `https://app-mmaug-development-web-gkt6d.azurewebsites.net`.
+- API: `https://app-mmaug-development-api-gkt6d.azurewebsites.net`.
+- GitHub OIDC uses only `id-mmaug-secure-login-portal` for Azure deployment.
+- React landing page, local sign-up/sign-in, verification, recovery and role
+  dashboards are deployed.
+- Administrators can invite, re-invite, approve, activate, deactivate, assign a
+  database role and delete another user from **People & access**.
+- Students and teachers have a scoped **My activity** view; administrators have the
+  full audit view.
+- PostgreSQL Flexible Server 16 B1ms is VNet-injected, private and included in API
+  readiness checks.
+- Azure Communication Services Email sends verification, invitation, recovery and
+  administrator-notification messages; the API checks final send operation status.
+- Key Vault, Application Insights, Log Analytics and private knowledge storage are
+  deployed in North Europe.
+- The active Microsoft Foundry account/project is in Sweden Central with
+  `gpt-5.4-mini` DataZoneStandard capacity 10.
+- Four persistent agents are Running: `mmaug-visitor`, `mmaug-student`,
+  `mmaug-teacher` and `mmaug-admin`.
+- Each agent has an audience-specific File Search vector store and passed a direct
+  Foundry smoke test.
+- The UAMI has effective Foundry User and the live App Service public route returned
+  `mode: "foundry"` on 14 November 2026.
+- The required MMUAG Bootcamp educational-use caveat is visible in the frontend and
+  repository documentation.
+- The current test suite contains 40 backend tests; frontend lint/build remain release
+  checks.
 
-## Deployed with a guarded fallback
+## Current limitations
 
-- Visitor, Student, Teacher and Administrator assistant interfaces and deterministic
-  guardrails are live.
-- The live public assistant still returns `safe-demo` for ordinary requests; a successful
-  Foundry-agent response is not verified.
+- Microsoft browser sign-in is waiting for the tenant administrator's SPA/API app
+  registrations, `access_as_user` permission/consent and redirect URI.
+- The supplied Foundry Traces screen is not yet connected to Application Insights;
+  App Service/Application Insights telemetry remains available.
+- Direct App Service HTTPS is the current ingress. Application Gateway/WAF and custom
+  DNS are not deployed.
+- A single UAMI currently shares deployment and runtime duties; split identities and
+  least-privilege storage/Key Vault access are production-hardening tasks.
 
-## Pending administrator actions
+## Pending administrator action
 
-1. Create the Microsoft Entra SPA/API registrations, delegated scope, consent and redirect
-   URIs, then provide `ENTRA_SPA_CLIENT_ID` and `ENTRA_API_CLIENT_ID` as GitHub environment
-   variables. The deployed API client ID is currently the zero UUID.
-2. Merge and deploy the Sweden Central Foundry Agent branch with provisioning disabled.
-3. Grant **Foundry User** to `id-mmaug-secure-login-portal` on the new Foundry project,
-   wait for propagation, then rerun deployment with agent provisioning enabled.
-4. Verify the live public assistant returns `mode: "foundry"` and test each authenticated
-   role's isolated knowledge boundary.
+1. Create the Microsoft Entra SPA and API registrations.
+2. Configure `api://<API_CLIENT_ID>/access_as_user`, delegated permission and consent.
+3. Add `http://localhost:5173` and the exact frontend App Service HTTPS redirect.
+4. Provide `ENTRA_SPA_CLIENT_ID` and `ENTRA_API_CLIENT_ID` as GitHub environment
+   variables, then redeploy.
 
-Direct App Service HTTPS is the current and documented public ingress.
+Foundry RBAC is no longer pending.
 
 ## Data-use boundary
 
-The environment contains synthetic demonstration data only. It is not approved for real
-student data or production adoption.
+The environment contains synthetic demonstration data only. It is not approved for
+real student data or production adoption.
